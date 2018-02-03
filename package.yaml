@@ -1,0 +1,58 @@
+name:                purescript-tsd-gen
+version:             0.1.0.0
+github:              "minoki/purescript-tsd-gen"
+license:             BSD3
+author:              "ARATA Mizuki"
+maintainer:          "minorinoki@gmail.com"
+copyright:           "2018 ARATA Mizuki"
+
+extra-source-files:
+- README.md
+- ChangeLog.md
+
+synopsis:            "TypeScript Declaration File (.d.ts) generator for PureScript"
+category:            Web
+
+# To avoid duplicated efforts in documentation and dealing with the
+# complications of embedding Haddock markup inside cabal files, it is
+# common to point users to the README.md file.
+description:         Please see the README on Github at <https://github.com/minoki/purescript-tsd-gen#readme>
+
+dependencies:
+- base >= 4.7 && < 5
+- purescript
+- aeson
+- bytestring
+- text
+- mtl
+- containers
+- filepath
+- directory
+
+library:
+  source-dirs: src
+
+executables:
+  purs-tsd-gen:
+    main:                Main.hs
+    source-dirs:         app
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    - -dynamic
+    - -W
+    dependencies:
+    - purescript-tsd-gen
+    - optparse-applicative
+
+tests:
+  purescript-tsd-gen-test:
+    main:                Spec.hs
+    source-dirs:         test
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - purescript-tsd-gen
