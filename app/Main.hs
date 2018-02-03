@@ -88,6 +88,8 @@ processLoadedModule env ef importAll = execWriterT $ do
            tell $ "import * as " <> TB.fromText ident <> " from \"../" <> TB.fromText (runModuleName moduleName) <> "\";\n"
   tell moduleBody
 
+  -- TODO: module re-exports: dig efExports / ReExportRef
+
   where
     currentModuleName :: ModuleName
     currentModuleName = efModuleName ef
@@ -278,38 +280,63 @@ processLoadedModule env ef importAll = execWriterT $ do
       -- Ignored: should be handled in EDType case.
       return ()
 
-processModule :: FilePath -> FilePath -> String -> Bool -> IO ()
-processModule inputDir outputDir modname importAll = do
-  let entryModule = moduleNameFromString (T.pack modname)
-  (env,m) <- execStateT (recursivelyLoadExterns inputDir entryModule) (initEnvironment, Map.empty)
+processModules :: FilePath -> Maybe FilePath -> [String] -> Bool -> IO ()
+processModules inputDir outputDir modules importAll = do
+  let loadOneModule = recursivelyLoadExterns inputDir . moduleNameFromString . T.pack
+  (env,m) <- execStateT (mapM_ loadOneModule modules) (initEnvironment, Map.empty)
   forM_ m $ \v -> case v of
               Just ef -> do
                 let moduleName = runModuleName (efModuleName ef)
-                    moduleDir = outputDir </> T.unpack moduleName
-                createDirectoryIfMissing True moduleDir
                 modTsd <- processLoadedModule env ef importAll
-                TL.writeFile (moduleDir </> "index.d.ts") (TB.toLazyText modTsd)
+                case outputDir of
+                  Just outputDir -> do
+                    let moduleDir = outputDir </> T.unpack moduleName
+                    createDirectoryIfMissing True moduleDir
+                    TL.writeFile (moduleDir </> "index.d.ts") (TB.toLazyText modTsd)
+                  Nothing -> do
+                    TL.putStr (TB.toLazyText modTsd)
               Nothing -> return ()
 
-data TsdOutput = TsdOutputDirectory FilePath | StdOutput
+data TsdOutput = TsdOutputDirectory FilePath | StdOutput | SameAsInput
 
 data PursTsdGen = PursTsdGen
   { pursOutputDirectory :: FilePath
-  , tsdOutputDirectory :: Maybe FilePath
-  , mainModuleName :: String
+  , tsdOutput :: TsdOutput
+  , mainModuleName :: Maybe String
+  , otherModuleNames :: [String]
   , importAll :: Bool
   }
+
+commaSepStr :: ReadM [String]
+commaSepStr = maybeReader (Just . split)
+  where split [] = []
+        split s = case span (/= ',') s of (x,xs) -> x:split xs
+
+tsdOutputParser :: Parser TsdOutput
+tsdOutputParser = (TsdOutputDirectory <$> strOption (long "tsd-output-directory" <> metavar "<dir>" <> help "where to write .d.ts files; same as --purs-output-directory by default"))
+                  <|> flag' StdOutput (long "stdout" <> help "Write to stdout")
+                  <|> pure SameAsInput
 
 pursTsdGen :: Parser PursTsdGen
 pursTsdGen = PursTsdGen
   <$> strOption (long "purs-output-directory" <> metavar "<dir>" <> help "PureScript output directory")
-  <*> optional (strOption (long "tsd-output-directory" <> metavar "<dir>" <> help "where to write .d.ts files; same as --purs-output-directory by default"))
-  <*> strOption (long "main" <> short 'm' <> metavar "<string>" <> help "The application's main module")
-  <*> switch (long "import-all" <> help "import dependent modules even if not referenced")
+  <*> tsdOutputParser
+  <*> optional (strOption (long "main" <> short 'm' <> metavar "<string>" <> help "The application's main module"))
+  <*> (fromMaybe [] <$> optional (option commaSepStr (long "modules" <> metavar "<string>" <> help "Comma-separated list of other modules")))
+  <*> switch (long "import-all" <> help "Import dependent modules even if not referenced")
 
 main :: IO ()
 main = execParser opts >>= \PursTsdGen{..} -> do
-  processModule pursOutputDirectory (fromMaybe pursOutputDirectory tsdOutputDirectory) mainModuleName importAll
+  processModules
+    pursOutputDirectory
+    (case tsdOutput of
+       TsdOutputDirectory dir -> Just dir
+       StdOutput -> Nothing
+       SameAsInput -> Just pursOutputDirectory)
+    (maybeToList mainModuleName ++ otherModuleNames)
+    importAll
   where
     opts = info (pursTsdGen <**> helper)
-      (fullDesc <> progDesc "Generate .d.ts files for PureScript modules" <> header "purs-tsd-gen - .d.ts generator for PureScript")
+      (fullDesc
+        <> progDesc "Generate .d.ts files for PureScript modules"
+        <> header "purs-tsd-gen - .d.ts generator for PureScript")

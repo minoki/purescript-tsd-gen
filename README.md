@@ -1,54 +1,192 @@
 # purescript-tsd-gen
 
-This is a TypeScript Definition (.d.ts) generator for PureScript.
+This is a TypeScript Declaration File (.d.ts) generator for PureScript.
+
+This tool helps you use PureScript modules from TypeScript.
 
 # How to build
 
+```sh
+$ git clone https://github.com/minoki/purescript-tsd-gen.git
+$ cd purescript-tsd-gen
+$ stack install
+```
+
 # How to use
+
+Assuming you have compiled PureScript modules into `./output`:
+
+```sh
+$ tree output/
+output/
+├── Control.Alt
+│   ├── externs.json
+│   └── index.js
+├── Control.Alternative
+│   ├── externs.json
+│   └── index.js
+...
+└── YourFancyModuleInPurs
+    ├── externs.json
+    └── index.js
+```
+
+Run the following to get the declaration files:
+
+```sh
+$ purs-tsd-gen --purs-output-directory output/ --main YourFancyModuleInPurs
+```
+
+Now you get `index.d.ts` alongside each module's `index.js`:
+
+```sh
+$ tree output/
+output/
+├── Control.Alt
+│   ├── externs.json
+│   ├── index.d.ts
+│   └── index.js
+├── Control.Alternative
+│   ├── externs.json
+│   ├── index.d.ts
+│   └── index.js
+...
+└── YourFancyModuleInPurs
+    ├── externs.json
+    ├── index.d.ts
+    └── index.js
+```
 
 # Mapping of types
 
 ## Builtin
 
-`Prim`:
+Primitive types translates as one would imagine:
 
-- `Function s t` (`s -> t`) `(_: s) => t`
-- `Array t` `Array<t>`
-- `Record` (`{ .. }`)
-- `Number`, `Int`
-- `String`, `Char`
-- `Boolean`
-- `class Partial`
+- `Function s t` (`s -> t`) --> `(_: s) => t`
+- `Array t` --> `Array<t>`
+    - TODO: Add an option to emit `ReadonlyArray<t>`.
+- `Record { key1 :: Type1, key2 :: Type2 }` --> `{ key1: Type1, key2: Type2 }`
+    - TODO: Add an option to make fields `readonly`.
+- `Number`, `Int` --> `number`
+- `String`, `Char` --> `string`
+- `Boolean` --> `boolean`
 
-`Data.Function.Uncurried`:
+Some modules get special handling:
 
-- `Fn0 r` `() => r`
-- `Fn10 a0 a1 .. a9 r` `(_: a0, ..., _: a9) => r`
+- `Data.Function.Uncurried`
+  - `Fn0 r` --> `() => r`
+  - `Fn2 a0 a1 r` --> `(_0: a0, _1: a2) => r`
+  - `Fn3 a0 a1 a2 r` --> `(_0: a0, _1: a1, _2: a2) => r`
+  - ...
+  - `Fn10 a0 a1 .. a9 r` --> `(_0: a0, ..., _9: a9) => r`
+- `Control.Monad.Eff`
+  - `Eff e r` -> `() => r`
+- `Data.StrMap.StrMap`
+  - `StrMap t` --> `{[_: string]: t}`
 
-`Data.StrMap.StrMap`
+## User-defined Data Types
 
-- `StrMap t` `{[_: string]: t}`
+Data type `SomeFancyDataType :: Type -> ... -> Type -> Type` is translated to `SomeFancyDataType<a0, ..., an>`.
 
-## Representation of User-defined Data Types (implementation detail)
+In contrast to usual TypeScript's structual subtyping, the translated types mimicks nominal typing with extra dummy fields.
 
-- Union of `{ $$pursType?: "<type name>", $$pursTag?: "<data constructor>", value0, ..., valueN }`
-- Example: Data.Tuple, Data.Maybe, Data.Either
-- Type refinement via `instanceof` should be possible.
-- It mimicks nominal typing in TypeScript with these extra fields
+Sum types are translated to discriminated union types, with a dummy tag field.  Type guards with `instanceof` should work.
 
-## Representation of Abstract Data Types (implementation detail)
+Data constructors are typed as an object type with `new` signature and `create` or `value` field.
 
-Hidden data constructors
+Types whose data constructors are not exposed, i.e. abstract types, are translated to an object type which contains `never` as a field, so that you cannot accidentally create a value of abstract types in TypeScript world.
 
-- `{ $$pursType: "<type name>", $$pursTag: "<data constructor>", $$abstractMarker: never }`
-    - User-code written in TypeScript cannot make a value of an abstract type by mistake.
-    - Data.Void
-- Data.Unit.Unit: `{ $$pursType?: "Data.Unit.Unit" }`
+Let's see some examples:
 
-## Representation of Newtypes (implementation detail)
+- Tuple
 
-- Just an alias.
+```purescript
+data Tuple a b = Tuple a b
+```
 
-## Handling of `foreign import data`
+compiles to:
 
-## Higher-kinded types
+```typescript
+export type /*data*/ Tuple<a, b> = Tuple$$Tuple< a, b >;
+interface Tuple$$Tuple<a, b> {
+    "$$pursType"?: "Data.Tuple.Tuple";
+    "$$pursTag"?: "Tuple";
+    value0: a;
+    value1: b;
+}
+export const /*data ctor*/ Tuple: { create: <a, b>(_: a) => (_: b) => Tuple< a, b >; new <a, b>(_0: a, _1: b): Tuple$$Tuple< a, b > };
+```
+
+- Maybe
+
+```purescript
+data Maybe a = Nothing | Just a
+```
+
+compiles to:
+
+```typescript
+export type /*data*/ Maybe<a> = Maybe$$Nothing | Maybe$$Just< a >;
+interface Maybe$$Nothing {
+    "$$pursType": "Data.Maybe.Maybe";
+    "$$pursTag": "Nothing";
+}
+export const /*data ctor*/ Nothing: { value: Maybe< any /* type variable a */ >; new (): Maybe$$Nothing };
+interface Maybe$$Just<a> {
+    "$$pursType": "Data.Maybe.Maybe";
+    "$$pursTag": "Just";
+    value0: a;
+}
+export const /*data ctor*/ Just: { create: <a>(_: a) => Maybe< a >; new <a>(_: a): Maybe$$Just< a > };
+```
+
+- Either
+
+```purescript
+data Either a b = Left a | Right b
+```
+
+compiles to:
+
+```typescript
+export type /*data*/ Either<a, b> = Either$$Left< a > | Either$$Right< b >;
+interface Either$$Left<a> {
+    "$$pursType": "Data.Either.Either";
+    "$$pursTag": "Left";
+    value0: a;
+}
+export const /*data ctor*/ Left: { create: <a, b>(_: a) => Either< a, b >; new <a>(_: a): Either$$Left< a > };
+interface Either$$Right<b> {
+    "$$pursType": "Data.Either.Either";
+    "$$pursTag": "Right";
+    value0: b;
+}
+export const /*data ctor*/ Right: { create: <a, b>(_: b) => Either< a, b >; new <b>(_: b): Either$$Right< b > };
+```
+
+## Newtypes
+
+Newtypes are translated to a type synonym.  The nominal property in PureScript is lost.
+
+## `foreign import data`
+
+`foreign import data` are translated to `any`.
+
+Maybe there should be a way for PS-library authors to provide corresponding `.d.ts` for foreign JavaScript modules.
+
+## Universally Quantified Types
+
+Simple polymorphic functions translate to generic functions.
+
+If the type is too complex, there may situations where the emitted declarations contain undue `any` type.
+
+## Higher-Kinded Types
+
+Not supported.
+
+TODO: Investigate if we can reasonably emulate higher-kinded types in TypeScript.
+
+## Type Classes
+
+Need more work.

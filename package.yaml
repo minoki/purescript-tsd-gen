@@ -40,7 +40,6 @@ executables:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
-    - -dynamic
     - -W
     dependencies:
     - purescript-tsd-gen

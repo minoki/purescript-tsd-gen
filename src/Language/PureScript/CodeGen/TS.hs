@@ -138,9 +138,9 @@ data TypeTranslationContext f = TypeTranslationContext { ttcBoundTyVars :: [Text
 type TypeTranslationT f = ReaderT (TypeTranslationContext f) (ExceptT MultipleErrors f)
 tsFunction :: forall f. Monad f => (Type -> TypeTranslationT f TSType) -> [Type] -> Type -> TypeTranslationT f TSType
 tsFunction go args ret = do
-  bv <- asks ttcUnboundTyVars
-  withReaderT (\r -> r { ttcBoundTyVars = ttcBoundTyVars r ++ bv, ttcUnboundTyVars = [] })
-    $ TSFunction bv <$> traverse go args <*> go ret
+  unbound <- asks ttcUnboundTyVars
+  withReaderT (\r -> r { ttcBoundTyVars = ttcBoundTyVars r ++ unbound, ttcUnboundTyVars = [] })
+    $ TSFunction unbound <$> traverse go args <*> go ret
 
 pursTypeToTSType :: forall f. Monad f => Type -> TypeTranslationT f TSType
 pursTypeToTSType = go
@@ -267,7 +267,7 @@ showTSTypePrec prec ty = case ty of
   TSString -> "string"
   TSFunction [] params ret -> showParenIf (prec > 0) $ "(" <> showFunctionParameters params <> ") => " <> showTSType ret
   TSFunction tp params ret -> showParenIf (prec > 0) $ "<" <> T.intercalate ", " (map properToJs tp) <> ">(" <> showFunctionParameters params <> ") => " <> showTSType ret
-  TSArray elemTy -> "Array<" <> showTSType elemTy <> ">" -- TODO: Use ReadonlyArray?
+  TSArray elemTy -> "Array< " <> showTSType elemTy <> " >" -- TODO: Use ReadonlyArray?
   TSStrMap elemTy -> "{[_: string]: " <> showTSType elemTy <> "}"
   TSUndefined -> "undefined"
   TSRecord [] -> "{}"
@@ -283,7 +283,8 @@ showTSTypePrec prec ty = case ty of
     where mid | Just m <- moduleid = m <> "."
               | otherwise = ""
           ta | [] <- tyArgs = ""
-             | otherwise = "<" <> T.intercalate ", " (map showTSType tyArgs) <> ">"
+               -- the space after '<' is needed to avoid parse error with types like Array<<a>(_: a) => a>
+             | otherwise = "< " <> T.intercalate ", " (map showTSType tyArgs) <> " >"
   TSCommented inner desc -> showTSTypePrec prec inner <> " /* " <>  desc <> " */"
 
 -- SimpleKind :: (Type -> )* Type
