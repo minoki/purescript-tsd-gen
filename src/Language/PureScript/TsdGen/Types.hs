@@ -1,11 +1,8 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-module Language.PureScript.CodeGen.TS where
+module Language.PureScript.TsdGen.Types where
 import Prelude hiding (elem,notElem,lookup)
-import qualified Data.ByteString.Lazy as BS
-import qualified Data.Aeson as JSON
-import Language.PureScript.Externs
 import Language.PureScript.Environment
 import Language.PureScript.Types
 import Language.PureScript.Label
@@ -21,36 +18,10 @@ import Data.Text (Text)
 import Control.Monad.State
 import Control.Monad.Except
 import qualified Data.Map as Map
-import qualified Language.PureScript.Constants as C
-import qualified Data.List as List
-import Control.Arrow
 import Control.Monad.Reader
 import Data.Monoid ((<>))
 import Data.Char (isLetter,isAlphaNum)
-import System.FilePath ((</>))
-
-readExternsForModule :: FilePath -> ModuleName -> IO (Maybe ExternsFile)
-readExternsForModule dir moduleName = do
-  let moduleNameText = T.unpack (runModuleName moduleName)
-  s <- BS.readFile (dir </> moduleNameText </> "externs.json")
-  return (JSON.decode s)
-
-recursivelyLoadExterns :: FilePath -> ModuleName -> StateT (Environment, Map.Map ModuleName (Maybe ExternsFile)) IO ()
-recursivelyLoadExterns dir moduleName
-  | moduleName == ModuleName [ProperName C.prim] = return ()
-  | otherwise = do
-  mef <- lift (readExternsForModule dir moduleName)
-  case mef of
-    Nothing -> return ()
-    Just ef -> do
-      modify (second (Map.insert moduleName (Just ef)))
-      let imports = efImports ef
-      forM_ (map eiModule imports) $ \importModuleName -> do
-        alreadyLoading <- gets (Map.member importModuleName . snd)
-        unless alreadyLoading $ do
-          modify (second (Map.insert importModuleName Nothing))
-          recursivelyLoadExterns dir importModuleName
-      modify (first (applyExternsFileToEnvironment ef))
+import qualified Data.List as List
 
 data Field = Field { fieldLabel :: !Label
                    , fieldType :: !TSType
@@ -136,6 +107,7 @@ data TypeTranslationContext f = TypeTranslationContext { ttcBoundTyVars :: [Text
                                                        }
 
 type TypeTranslationT f = ReaderT (TypeTranslationContext f) (ExceptT MultipleErrors f)
+
 tsFunction :: forall f. Monad f => (Type -> TypeTranslationT f TSType) -> [Type] -> Type -> TypeTranslationT f TSType
 tsFunction go args ret = do
   unbound <- asks ttcUnboundTyVars
