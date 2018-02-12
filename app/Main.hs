@@ -5,6 +5,7 @@ module Main where
 import Prelude hiding (elem,notElem,lookup)
 import Data.Maybe
 import Data.Monoid ((<>))
+import qualified Data.List as List
 import qualified Data.Map as Map
 import qualified Data.Text as T
 import qualified Data.Text.Lazy.IO as TL
@@ -54,19 +55,43 @@ pursTsdGen = PursTsdGen
   <$> strOption (long "directory" <> short 'd' <> metavar "<dir>" <> help "PureScript's output directory")
   <*> tsdOutputParser
   <*> switch (long "import-all" <> help "Import dependent modules even if not referenced")
-  <*> (many (strArgument (metavar "<modules>" <> help "List of modules to export (all if omitted)")))
+  <*> (many (strArgument (metavar "<modules>" <> help "List of modules to export (all if omitted). Glob-like patterns '*' and '**' are parsed.")))
+
+-- |
+-- >>> filter (testModuleGlob "Foo.*") ["FooBar","Foo.Bar","Foo.Bar.Baz"]
+-- ["Foo.Bar"]
+-- >>> filter (testModuleGlob "Foo*") ["Foo.Bar","FooBar"]
+-- ["FooBar"]
+-- >>> filter (testModuleGlob "Foo*Bar") ["FooBar","FooBazBar","FooBaz.Bar"]
+-- ["FooBar","FooBazBar"]
+-- >>> filter (testModuleGlob "Foo**Bar") ["FooBar","FooBazBar","FooBaz.Bar"]
+-- ["FooBar","FooBazBar","FooBaz.Bar"]
+testModuleGlob :: String -> String -> Bool
+testModuleGlob [] [] = True
+-- '**': wildcard, including '.'
+testModuleGlob ('*':'*':xs) s = any (testModuleGlob xs) (List.tails s)
+-- '*': wildcard, not including '.'
+testModuleGlob ('*':xs) s = any (testModuleGlob xs) (tails' s)
+  where
+    tails' :: String -> [String]
+    tails' [] = [[]]
+    tails' s@(x:xs) | x == '.' = [s]
+                    | otherwise = s : tails' xs
+testModuleGlob (x:xs) (y:ys) | x == y = testModuleGlob xs ys
+testModuleGlob _ _ = False
 
 main :: IO ()
 main = do
   PursTsdGen{..} <- execParser opts
-  moduleNames' <- case moduleNames of
-    [] -> listDirectory pursOutputDirectory
-    m -> return m
+  allModules <- listDirectory pursOutputDirectory
+  let selectedModules = case moduleNames of
+                          [] -> allModules
+                          m -> filter (\t -> any (flip testModuleGlob t) m) allModules
   let tsdOutputDirectory = case tsdOutput of
         TsdOutputDirectory dir -> Just dir
         StdOutput -> Nothing
         SameAsInput -> Just pursOutputDirectory
-  result <- runExceptT $ processModules pursOutputDirectory tsdOutputDirectory moduleNames' importAll
+  result <- runExceptT $ processModules pursOutputDirectory tsdOutputDirectory selectedModules importAll
   case result of
     Left err -> hPutStr stderr (show err)
     Right _ -> return ()
