@@ -12,6 +12,7 @@ import Language.PureScript.Names
 import Language.PureScript.Errors
 import Language.PureScript.TypeChecker.Kinds
 import Language.PureScript.TypeChecker.Monad
+import qualified Language.PureScript.Constants as C
 import Language.PureScript.CodeGen.JS.Common
 import qualified Data.Text as T
 import Data.Text (Text)
@@ -166,7 +167,7 @@ pursTypeToTSType = go
       case s' of
         TSNamed m n a -> pure (TSNamed m n (a ++ [t']))
         _ -> pure (TSUnknown $ T.pack $ show ty)
-    go ty@(TypeConstructor (Qualified (Just (ModuleName [ProperName "Prim"])) typeName)) = do
+    go ty@(TypeConstructor (Qualified (Just (ModuleName [ProperName prim])) typeName)) | prim == C.prim = do
       case typeName of
         ProperName "Partial" -> pure (TSUnknown "Prim.Partial")
         _ -> pure (TSUnknown $ T.pack $ show ty)

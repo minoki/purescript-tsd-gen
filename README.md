@@ -34,7 +34,7 @@ output/
 Run the following to get the declaration files:
 
 ```sh
-$ purs-tsd-gen --purs-output-directory output/ --main YourFancyModuleInPurs
+$ purs-tsd-gen -d output/ YourFancyModuleInPurs
 ```
 
 Now you get `index.d.ts` alongside each module's `index.js`:
