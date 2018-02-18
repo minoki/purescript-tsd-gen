@@ -1,3 +1,5 @@
 # Changelog for purescript-tsd-gen
 
-## Unreleased changes
+## 0.1.0.0
+
+Initial release.
