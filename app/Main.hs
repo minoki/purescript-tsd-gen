@@ -12,7 +12,7 @@ import qualified Data.Text.Lazy.IO as TL
 import qualified Data.Text.Lazy.Builder as TB
 import Control.Monad.State
 import Control.Monad.Except
-import System.IO
+import System.IO (hPutStr,stderr)
 import System.FilePath ((</>))
 import System.Directory (createDirectoryIfMissing,listDirectory)
 import Options.Applicative
@@ -24,14 +24,14 @@ import Data.Version (showVersion)
 import Paths_purescript_tsd_gen (version)
 
 processModules :: FilePath -> Maybe FilePath -> [String] -> Bool -> ExceptT ModuleProcessingError IO ()
-processModules inputDir outputDir modules importAll = do
+processModules inputDir mOutputDir modules importAll = do
   let loadOneModule = recursivelyLoadExterns inputDir . moduleNameFromString . T.pack
   -- TODO: Check efVersion
   (env,m) <- execStateT (mapM_ loadOneModule modules) (initEnvironment, Map.empty)
   forM_ (catMaybes $ Map.elems m) $ \ef -> do
     let moduleName = runModuleName (efModuleName ef)
     modTsd <- processLoadedModule env ef importAll
-    liftIO $ case outputDir of
+    liftIO $ case mOutputDir of
       Just outputDir -> do
         let moduleDir = outputDir </> T.unpack moduleName
         createDirectoryIfMissing True moduleDir
@@ -78,8 +78,8 @@ testModuleGlob ('*':xs) s = any (testModuleGlob xs) (tails' s)
   where
     tails' :: String -> [String]
     tails' [] = [[]]
-    tails' s@(x:xs) | x == '.' = [s]
-                    | otherwise = s : tails' xs
+    tails' t@(y:ys) | y == '.' = [t]
+                    | otherwise = t : tails' ys
 testModuleGlob (x:xs) (y:ys) | x == y = testModuleGlob xs ys
 testModuleGlob _ _ = False
 
