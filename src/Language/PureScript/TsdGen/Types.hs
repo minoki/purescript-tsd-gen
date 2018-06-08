@@ -40,13 +40,14 @@ mkOptionalField label ty = Field label ty True
 
 -- TypeScript types
 data TSType = TSAny
+            | TSUndefined
+            | TSNull
             | TSNever
             | TSNumber
             | TSBoolean
             | TSString
             | TSFunction {- type parameters -} [Text] {- parameter types -} [TSType] TSType
             | TSArray TSType
-            | TSUndefined
             | TSRecord [Field]
             | TSStrMap TSType -- Data.StrMap.StrMap <=> {[_: string]: T}
             | TSTyVar Text
@@ -98,6 +99,11 @@ tyEff = TypeConstructor (Qualified (Just (moduleNameFromString "Control.Monad.Ef
 -- Data.Variant (from purescript-variant)
 -- foreign import data Variant :: # Type -> Type
 tyVariant = TypeConstructor (Qualified (Just (moduleNameFromString "Data.Variant")) (ProperName "Variant"))
+
+-- Data.Nullable (from purescript-nullable)
+-- foreign import data Nullable :: Type -> Type
+qnNullable = Qualified (Just (moduleNameFromString "Data.Nullable")) (ProperName "Nullable")
+tyNullable = TypeConstructor qnNullable
 
 constraintToType :: Constraint -> Type
 constraintToType ct = foldl TypeApp (TypeConstructor qDictTypeName) (constraintArgs ct)
@@ -152,6 +158,7 @@ pursTypeToTSType = go
       | tcon == tyFn0 = tsFunction go [] a0
       | tcon == tyVariant = case rowToList a0 of
                               (pairs, _) -> TSUnion <$> traverse (\(label,ty) -> (\ty' -> TSRecord [mkField "type" (TSStringLit $ runLabel label), mkField "value" ty']) <$> go ty) pairs
+      | tcon == tyNullable = (\ty -> TSUnion [ty, TSNull]) <$> go a0
     go ty@(ForAll name inner _) = getKindsIn ty $ \kinds ->
       if List.lookup name kinds == Just kindType
       then withReaderT (\r -> r { ttcUnboundTyVars = name : ttcUnboundTyVars r }) (go inner)
@@ -240,6 +247,8 @@ isIdentifierName name = case T.uncons name of
 showTSTypePrec :: Int -> TSType -> Text
 showTSTypePrec prec ty = case ty of
   TSAny -> "any"
+  TSUndefined -> "undefined"
+  TSNull -> "null"
   TSNever -> "never"
   TSNumber -> "number"
   TSBoolean -> "boolean"
@@ -248,7 +257,6 @@ showTSTypePrec prec ty = case ty of
   TSFunction tp params ret -> showParenIf (prec > 0) $ "<" <> T.intercalate ", " (map properToJs tp) <> ">(" <> showFunctionParameters params <> ") => " <> showTSType ret
   TSArray elemTy -> "Array< " <> showTSType elemTy <> " >" -- TODO: Use ReadonlyArray?
   TSStrMap elemTy -> "{[_: string]: " <> showTSType elemTy <> "}"
-  TSUndefined -> "undefined"
   TSRecord [] -> "{}"
   TSRecord fields -> "{ " <> T.intercalate "; " (map showField fields) <> " }"
   TSUnknown desc -> "any /* " <>  desc <> " */"

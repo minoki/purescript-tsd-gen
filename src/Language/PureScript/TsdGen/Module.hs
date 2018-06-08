@@ -225,7 +225,7 @@ processLoadedModule env ef importAll = execWriterT $ do
                      -- Foreign type: just use 'any' type.
                      -- External '.d.ts' file needs to be supplied for better typing.
                      emitTypeDeclaration (Just "foreign") name typeParameters (TSUnknown "foreign")
-                 where builtins = [qnFn0,qnFn2,qnFn3,qnFn4,qnFn5,qnFn6,qnFn7,qnFn8,qnFn9,qnFn10,qnStrMap]
+                 where builtins = [qnFn0,qnFn2,qnFn3,qnFn4,qnFn5,qnFn6,qnFn7,qnFn8,qnFn9,qnFn10,qnStrMap,qnNullable]
                        n = numberOfTypeParams edTypeKind
                        typeParameters = map (\i -> "a" <> T.pack (show i)) [0..n-1]
 
