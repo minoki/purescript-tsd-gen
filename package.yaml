@@ -20,7 +20,7 @@ description:         Please see the README on Github at <https://github.com/mino
 
 dependencies:
 - base >= 4.7 && < 5
-- purescript
+- purescript >= 0.12.0
 - aeson
 - bytestring
 - text
