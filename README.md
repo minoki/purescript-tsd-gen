@@ -84,6 +84,8 @@ Some modules get special handling:
   - `Eff e r` -> `() => r`
 - `Data.StrMap.StrMap`
   - `StrMap t` --> `{[_: string]: t}`
+- `Data.Variant` (from [purescript-variant](https://github.com/natefaubion/purescript-variant))
+  - `Variant (tag1 :: Type1, tag2 :: Type2)` --> `{type: "tag1", value: Type1} | {type: "tag2", value: Type2}`
 
 ## User-defined Data Types
 

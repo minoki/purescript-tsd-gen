@@ -95,6 +95,10 @@ tyStrMap = TypeConstructor qnStrMap
 -- foreign import data Eff :: # Effect -> Type -> Type
 tyEff = TypeConstructor (Qualified (Just (moduleNameFromString "Control.Monad.Eff")) (ProperName "Eff"))
 
+-- Data.Variant (from purescript-variant)
+-- foreign import data Variant :: # Type -> Type
+tyVariant = TypeConstructor (Qualified (Just (moduleNameFromString "Data.Variant")) (ProperName "Variant"))
+
 constraintToType :: Constraint -> Type
 constraintToType ct = foldl TypeApp (TypeConstructor qDictTypeName) (constraintArgs ct)
   where qDictTypeName = fmap coerceProperName (constraintClass ct)
@@ -146,6 +150,8 @@ pursTypeToTSType = go
       | tcon == tyRecord = case rowToList a0 of
                              (pairs, _) -> TSRecord <$> traverse (\(label,ty) -> mkField label <$> go ty) pairs
       | tcon == tyFn0 = tsFunction go [] a0
+      | tcon == tyVariant = case rowToList a0 of
+                              (pairs, _) -> TSUnion <$> traverse (\(label,ty) -> (\ty' -> TSRecord [mkField "type" (TSStringLit $ runLabel label), mkField "value" ty']) <$> go ty) pairs
     go ty@(ForAll name inner _) = getKindsIn ty $ \kinds ->
       if List.lookup name kinds == Just kindType
       then withReaderT (\r -> r { ttcUnboundTyVars = name : ttcUnboundTyVars r }) (go inner)
