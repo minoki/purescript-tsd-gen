@@ -80,6 +80,8 @@ Some modules get special handling:
   - `Fn3 a0 a1 a2 r` --> `(_0: a0, _1: a1, _2: a2) => r`
   - ...
   - `Fn10 a0 a1 .. a9 r` --> `(_0: a0, ..., _9: a9) => r`
+- `Effect`
+  - `Effect a` -> `() => a`
 - `Control.Monad.Eff`
   - `Eff e r` -> `() => r`
 - `Data.StrMap.StrMap`

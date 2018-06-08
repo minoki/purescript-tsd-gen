@@ -15,7 +15,7 @@
 # resolver:
 #  name: custom-snapshot
 #  location: "./custom-snapshot.yaml"
-resolver: lts-10.5
+resolver: lts-11.12
 
 # User packages to be built.
 # Various formats can be used as shown in the example below.
@@ -40,10 +40,7 @@ packages:
 # Dependency packages to be pulled from upstream that are not in the resolver
 # (e.g., acme-missiles-0.3)
 extra-deps:
-- purescript-0.11.7
-- Glob-0.8.0
-- ansi-terminal-0.6.3.1
-- pipes-http-1.0.5
+- purescript-0.12.0
 
 # Override default flag values for local packages and extra-deps
 # flags: {}

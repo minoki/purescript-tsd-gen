@@ -55,7 +55,8 @@ readExternsForModule dir moduleName = do
 
 recursivelyLoadExterns :: FilePath -> ModuleName -> StateT (Environment, Map.Map ModuleName (Maybe ExternsFile)) (ExceptT ModuleProcessingError IO) ()
 recursivelyLoadExterns dir moduleName
-  | moduleName == ModuleName [ProperName C.prim] = return ()
+  | moduleName == ModuleName [ProperName C.prim] = return () -- ~v0.11.7
+  | moduleName `List.elem` C.primModules = return () -- v0.12.0~
   | otherwise = do
   ef <- lift (readExternsForModule dir moduleName)
   modify (second (Map.insert moduleName (Just ef)))
@@ -225,7 +226,7 @@ processLoadedModule env ef importAll = execWriterT $ do
                      -- Foreign type: just use 'any' type.
                      -- External '.d.ts' file needs to be supplied for better typing.
                      emitTypeDeclaration (Just "foreign") name typeParameters (TSUnknown "foreign")
-                 where builtins = [qnFn0,qnFn2,qnFn3,qnFn4,qnFn5,qnFn6,qnFn7,qnFn8,qnFn9,qnFn10,qnStrMap,qnNullable]
+                 where builtins = [qnFn0,qnFn2,qnFn3,qnFn4,qnFn5,qnFn6,qnFn7,qnFn8,qnFn9,qnFn10,qnStrMap,qnEffect,qnNullable]
                        n = numberOfTypeParams edTypeKind
                        typeParameters = map (\i -> "a" <> T.pack (show i)) [0..n-1]
 

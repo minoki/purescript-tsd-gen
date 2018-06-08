@@ -86,7 +86,7 @@ tyFn8 = TypeConstructor qnFn8
 tyFn9 = TypeConstructor qnFn9
 tyFn10 = TypeConstructor qnFn10
 
--- Data.StrMap:
+-- Data.StrMap (from purescript-maps)
 -- foreign import data StrMap :: Type -> Type
 qnStrMap = Qualified (Just (moduleNameFromString "Data.StrMap")) (ProperName "StrMap")
 tyStrMap :: Type
@@ -95,6 +95,11 @@ tyStrMap = TypeConstructor qnStrMap
 -- Control.Monad.Eff
 -- foreign import data Eff :: # Effect -> Type -> Type
 tyEff = TypeConstructor (Qualified (Just (moduleNameFromString "Control.Monad.Eff")) (ProperName "Eff"))
+
+-- Effect (from purescript-effect)
+-- foreign import data Effect :: Type -> Type
+qnEffect = Qualified (Just (moduleNameFromString "Effect")) (ProperName "Effect")
+tyEffect = TypeConstructor qnEffect
 
 -- Data.Variant (from purescript-variant)
 -- foreign import data Variant :: # Type -> Type
@@ -156,6 +161,7 @@ pursTypeToTSType = go
       | tcon == tyRecord = case rowToList a0 of
                              (pairs, _) -> TSRecord <$> traverse (\(label,ty) -> mkField label <$> go ty) pairs
       | tcon == tyFn0 = tsFunction go [] a0
+      | tcon == tyEffect = tsFunction go [] a0
       | tcon == tyVariant = case rowToList a0 of
                               (pairs, _) -> TSUnion <$> traverse (\(label,ty) -> (\ty' -> TSRecord [mkField "type" (TSStringLit $ runLabel label), mkField "value" ty']) <$> go ty) pairs
       | tcon == tyNullable = (\ty -> TSUnion [ty, TSNull]) <$> go a0
