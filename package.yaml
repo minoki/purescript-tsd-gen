@@ -1,5 +1,5 @@
 name:                purescript-tsd-gen
-version:             0.1.0.0
+version:             0.2.0.0
 github:              "minoki/purescript-tsd-gen"
 license:             BSD3
 author:              "ARATA Mizuki <minorinoki@gmail.com>"
