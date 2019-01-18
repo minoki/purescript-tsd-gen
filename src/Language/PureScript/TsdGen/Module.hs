@@ -74,7 +74,7 @@ emitComment t = tell ("// " <> TB.fromText t <> "\n")
 emitInterface :: Text -> [Text] -> [Field] -> ModuleWriter ()
 emitInterface name tyParams fields = do
   let tyParamsText | null tyParams = mempty
-                   | otherwise = "<" <> TB.fromText (T.intercalate ", " $ map properToJs tyParams) <> ">"
+                   | otherwise = "<" <> TB.fromText (T.intercalate ", " $ map anyNameToJs tyParams) <> ">"
   tell $ "interface " <> TB.fromText name <> tyParamsText <> " {\n" <> TB.fromText (T.concat (map (\f -> "    " <> showField f <> ";\n") fields)) <> "}\n"
 
 emitTypeDeclaration :: Maybe Text -> Text -> [Text] -> TSType -> ModuleWriter ()
@@ -83,7 +83,7 @@ emitTypeDeclaration comment name tyParams ty = do
                  Just commentText -> "/*" <> TB.fromText commentText <> "*/ "
                  Nothing -> mempty
   let tyParamsText | null tyParams = mempty
-                   | otherwise = "<" <> TB.fromText (T.intercalate ", " $ map properToJs tyParams) <> ">"
+                   | otherwise = "<" <> TB.fromText (T.intercalate ", " $ map anyNameToJs tyParams) <> ">"
   tell $ "export type " <> commentPart <> TB.fromText name <> tyParamsText <> " = " <> TB.fromText (showTSType ty) <> ";\n"
 
 emitValueDeclaration :: Maybe Text -> Text -> TSType -> ModuleWriter ()
@@ -157,7 +157,7 @@ processLoadedModule env ef importAll = execWriterT $ do
     makeContext :: [Text] -> TypeTranslationContext ModuleWriter
     makeContext typeVariables = TypeTranslationContext typeVariables [] Nothing getModuleId env currentModuleName
 
-    pursTypeToTSTypeX :: [Text] -> Type -> ModuleWriter TSType
+    pursTypeToTSTypeX :: [Text] -> SourceType -> ModuleWriter TSType
     pursTypeToTSTypeX ctx ty = do
       e <- runExceptT $ runReaderT (pursTypeToTSType ty) (makeContext ctx)
       case e of
@@ -220,7 +220,7 @@ processLoadedModule env ef importAll = execWriterT $ do
                      -- Data.Unit
                      emitTypeDeclaration (Just "builtin") "Unit" [] (TSRecord [(mkOptionalField "$$pursType" (TSStringLit "Data.Unit.Unit"))])
                  | qTypeName `List.elem` builtins -> do
-                     pst <- pursTypeToTSTypeX typeParameters (foldl TypeApp (TypeConstructor qTypeName) (map TypeVar typeParameters))
+                     pst <- pursTypeToTSTypeX typeParameters (foldl (TypeApp nullSourceAnn) (TypeConstructor nullSourceAnn qTypeName) (map (TypeVar nullSourceAnn) typeParameters))
                      emitTypeDeclaration (Just "builtin") name typeParameters pst
                  | otherwise -> do
                      -- Foreign type: just use 'any' type.
@@ -286,8 +286,8 @@ processLoadedModule env ef importAll = execWriterT $ do
       , Just (_synonymParams,_synonymType) <- Map.lookup qDictTypeName (typeSynonyms env) = do
           -- TODO: This code depends on the undocumented implementation-details...
           let {-synonymInstance = replaceAllTypeVars (zip (freeTypeVariables synonymType) edInstanceTypes) synonymType-}
-              dictTy = foldl TypeApp (TypeConstructor qDictTypeName) edInstanceTypes
-              desugaredInstanceType = quantify (foldr ConstrainedType dictTy constraints)
+              dictTy = foldl (TypeApp nullSourceAnn) (TypeConstructor nullSourceAnn qDictTypeName) edInstanceTypes
+              desugaredInstanceType = quantify (foldr (ConstrainedType nullSourceAnn) dictTy constraints)
           instanceTy <- pursTypeToTSTypeX [] desugaredInstanceType
           emitValueDeclaration (Just "instance") name instanceTy
       | otherwise = emitComment ("invalid instance declaration '" <> name <> "'")

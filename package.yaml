@@ -4,7 +4,7 @@ github:              "minoki/purescript-tsd-gen"
 license:             BSD3
 author:              "ARATA Mizuki <minorinoki@gmail.com>"
 maintainer:          "ARATA Mizuki <minorinoki@gmail.com>"
-copyright:           "2018 ARATA Mizuki"
+copyright:           "2018-2019 ARATA Mizuki"
 
 extra-source-files:
 - README.md
@@ -20,7 +20,7 @@ description:         Please see the README on Github at <https://github.com/mino
 
 dependencies:
 - base >= 4.7 && < 5
-- purescript >= 0.12.0
+- purescript == 0.12.2
 - aeson
 - bytestring
 - text
