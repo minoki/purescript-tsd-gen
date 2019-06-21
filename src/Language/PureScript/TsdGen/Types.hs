@@ -165,7 +165,7 @@ pursTypeToTSType = go
       | tcon == tyVariant = case rowToList a0 of
           (pairs, _) -> TSUnion <$> traverse (\(RowListItem { rowListLabel = label, rowListType = ty }) -> (\ty' -> TSRecord [mkField "type" (TSStringLit $ runLabel label), mkField "value" ty']) <$> go ty) pairs
       | tcon == tyNullable = (\ty -> TSUnion [ty, TSNull]) <$> go a0
-    go ty@(ForAll _ name inner _) = getKindsIn ty $ \kinds ->
+    go ty@(ForAll _ name _kind inner _) = getKindsIn ty $ \kinds ->
       if List.lookup name kinds == Just kindType
       then withReaderT (\r -> r { ttcUnboundTyVars = name : ttcUnboundTyVars r }) (go inner)
       else go inner
