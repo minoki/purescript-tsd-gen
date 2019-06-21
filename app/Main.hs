@@ -16,6 +16,7 @@ import System.IO (hPutStr,stderr)
 import System.FilePath ((</>))
 import System.Directory (createDirectoryIfMissing,listDirectory)
 import Options.Applicative
+import qualified Language.PureScript (version)
 import Language.PureScript.Externs
 import Language.PureScript.Environment
 import Language.PureScript.Names
@@ -41,12 +42,12 @@ processModules inputDir mOutputDir modules importAll = do
 
 data TsdOutput = TsdOutputDirectory FilePath | StdOutput | SameAsInput
 
-data PursTsdGen = PursTsdGen
-  { pursOutputDirectory :: FilePath
-  , tsdOutput :: TsdOutput
-  , importAll :: Bool
-  , moduleNames :: [String]
-  }
+data PursTsdGen = PursTsdGen { pursOutputDirectory :: FilePath
+                             , tsdOutput :: TsdOutput
+                             , importAll :: Bool
+                             , moduleNames :: [String]
+                             }
+                | ShowVersion
 
 tsdOutputParser :: Parser TsdOutput
 tsdOutputParser = (TsdOutputDirectory <$> strOption (long "tsd-directory" <> metavar "<dir>" <> help "Where to write .d.ts files; same as --directory by default"))
@@ -59,6 +60,7 @@ pursTsdGen = PursTsdGen
   <*> tsdOutputParser
   <*> switch (long "import-all" <> help "Import dependent modules even if not referenced")
   <*> (many (strArgument (metavar "<modules>" <> help "List of modules to export (all if omitted). Glob-like patterns '*' and '**' are parsed.")))
+  <|> flag' ShowVersion (long "version" <> short 'v' <> help "Show version")
 
 -- |
 -- >>> filter (testModuleGlob "Foo.*") ["FooBar","Foo.Bar","Foo.Bar.Baz"]
@@ -88,20 +90,25 @@ isGlobPattern = List.elem '*'
 
 main :: IO ()
 main = do
-  PursTsdGen{..} <- execParser opts
-  allModules <- listDirectory pursOutputDirectory
-  let selectedModules = case moduleNames of
-                          [] -> allModules
-                          _ -> let (patterns,literals) = List.partition isGlobPattern moduleNames
-                               in List.nub $ filter (\t -> any (flip testModuleGlob t) patterns) allModules ++ literals
-  let tsdOutputDirectory = case tsdOutput of
-        TsdOutputDirectory dir -> Just dir
-        StdOutput -> Nothing
-        SameAsInput -> Just pursOutputDirectory
-  result <- runExceptT $ processModules pursOutputDirectory tsdOutputDirectory selectedModules importAll
-  case result of
-    Left err -> hPutStr stderr (show err) -- TODO: Better error handling
-    Right _ -> return ()
+  p <- execParser opts
+  case p of
+    PursTsdGen{..} -> do
+      allModules <- listDirectory pursOutputDirectory
+      let selectedModules = case moduleNames of
+                              [] -> allModules
+                              _ -> let (patterns,literals) = List.partition isGlobPattern moduleNames
+                                   in List.nub $ filter (\t -> any (flip testModuleGlob t) patterns) allModules ++ literals
+      let tsdOutputDirectory = case tsdOutput of
+            TsdOutputDirectory dir -> Just dir
+            StdOutput -> Nothing
+            SameAsInput -> Just pursOutputDirectory
+      result <- runExceptT $ processModules pursOutputDirectory tsdOutputDirectory selectedModules importAll
+      case result of
+        Left err -> hPutStr stderr (show err) -- TODO: Better error handling
+        Right _ -> return ()
+    ShowVersion -> do
+      putStrLn $ "purs-tsd-gen " <> showVersion version
+        <> " (works with purescript " <> showVersion Language.PureScript.version <> ")"
   where
     opts = info (pursTsdGen <**> helper)
       (fullDesc
