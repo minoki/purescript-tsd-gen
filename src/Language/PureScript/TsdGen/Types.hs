@@ -86,6 +86,30 @@ tyFn8 = TypeConstructor nullSourceAnn qnFn8
 tyFn9 = TypeConstructor nullSourceAnn qnFn9
 tyFn10 = TypeConstructor nullSourceAnn qnFn10
 
+-- Effect.Uncurried
+tyEffectFn1, tyEffectFn2, tyEffectFn3, tyEffectFn4, tyEffectFn5, tyEffectFn6, tyEffectFn7, tyEffectFn8, tyEffectFn9, tyEffectFn10 :: SourceType
+modEffectUncurried = Just (moduleNameFromString "Effect.Uncurried")
+qnEffectFn1 = Qualified modEffectUncurried (ProperName "EffectFn1")
+qnEffectFn2 = Qualified modEffectUncurried (ProperName "EffectFn2")
+qnEffectFn3 = Qualified modEffectUncurried (ProperName "EffectFn3")
+qnEffectFn4 = Qualified modEffectUncurried (ProperName "EffectFn4")
+qnEffectFn5 = Qualified modEffectUncurried (ProperName "EffectFn5")
+qnEffectFn6 = Qualified modEffectUncurried (ProperName "EffectFn6")
+qnEffectFn7 = Qualified modEffectUncurried (ProperName "EffectFn7")
+qnEffectFn8 = Qualified modEffectUncurried (ProperName "EffectFn8")
+qnEffectFn9 = Qualified modEffectUncurried (ProperName "EffectFn9")
+qnEffectFn10 = Qualified modEffectUncurried (ProperName "EffectFn10")
+tyEffectFn1 = TypeConstructor nullSourceAnn qnEffectFn1
+tyEffectFn2 = TypeConstructor nullSourceAnn qnEffectFn2
+tyEffectFn3 = TypeConstructor nullSourceAnn qnEffectFn3
+tyEffectFn4 = TypeConstructor nullSourceAnn qnEffectFn4
+tyEffectFn5 = TypeConstructor nullSourceAnn qnEffectFn5
+tyEffectFn6 = TypeConstructor nullSourceAnn qnEffectFn6
+tyEffectFn7 = TypeConstructor nullSourceAnn qnEffectFn7
+tyEffectFn8 = TypeConstructor nullSourceAnn qnEffectFn8
+tyEffectFn9 = TypeConstructor nullSourceAnn qnEffectFn9
+tyEffectFn10 = TypeConstructor nullSourceAnn qnEffectFn10
+
 -- Data.StrMap (from purescript-maps)
 -- foreign import data StrMap :: Type -> Type
 qnStrMap = Qualified (Just (moduleNameFromString "Data.StrMap")) (ProperName "StrMap")
@@ -109,6 +133,11 @@ tyVariant = TypeConstructor nullSourceAnn  (Qualified (Just (moduleNameFromStrin
 -- foreign import data Nullable :: Type -> Type
 qnNullable = Qualified (Just (moduleNameFromString "Data.Nullable")) (ProperName "Nullable")
 tyNullable = TypeConstructor nullSourceAnn qnNullable
+
+-- Foreign.Object (from purescript-foreign-object)
+-- foreign import data Object :: Type -> Type
+qnForeignObject = Qualified (Just (moduleNameFromString "Foreign.Object")) (ProperName "Object")
+tyForeignObject = TypeConstructor nullSourceAnn qnForeignObject
 
 constraintToType :: SourceConstraint -> SourceType
 constraintToType ct = foldl (TypeApp nullSourceAnn) (TypeConstructor nullSourceAnn qDictTypeName) (constraintArgs ct)
@@ -135,29 +164,29 @@ pursTypeToTSType = go
   where
     go :: SourceType -> TypeTranslationT f TSType
     go (TypeApp _ (TypeApp _ tcon a0) r)
-      | tcon == tyFunction = tsFunction go [a0] r
+      | tcon == tyFunction || tcon == tyEffectFn1 = tsFunction go [a0] r
       | tcon == tyEff = tsFunction go [] r
     go (TypeApp _ (TypeApp _ (TypeApp _ tcon a0) a1) r)
-      | tcon == tyFn2 = tsFunction go [a0,a1] r
+      | tcon == tyFn2 || tcon == tyEffectFn2 = tsFunction go [a0,a1] r
     go (TypeApp _ (TypeApp _ (TypeApp _ (TypeApp _ tcon a0) a1) a2) r)
-      | tcon == tyFn3 = tsFunction go [a0,a1,a2] r
+      | tcon == tyFn3 || tcon == tyEffectFn3 = tsFunction go [a0,a1,a2] r
     go (TypeApp _ (TypeApp _ (TypeApp _ (TypeApp _ (TypeApp _ tcon a0) a1) a2) a3) r)
-      | tcon == tyFn4 = tsFunction go [a0,a1,a2,a3] r
+      | tcon == tyFn4 || tcon == tyEffectFn4 = tsFunction go [a0,a1,a2,a3] r
     go (TypeApp _ (TypeApp _ (TypeApp _ (TypeApp _ (TypeApp _ (TypeApp _ tcon a0) a1) a2) a3) a4) r)
-      | tcon == tyFn5 = tsFunction go [a0,a1,a2,a3,a4] r
+      | tcon == tyFn5 || tcon == tyEffectFn5 = tsFunction go [a0,a1,a2,a3,a4] r
     go (TypeApp _ (TypeApp _ (TypeApp _ (TypeApp _ (TypeApp _ (TypeApp _ (TypeApp _ tcon a0) a1) a2) a3) a4) a5) r)
-      | tcon == tyFn6 = tsFunction go [a0,a1,a2,a3,a4,a5] r
+      | tcon == tyFn6 || tcon == tyEffectFn6 = tsFunction go [a0,a1,a2,a3,a4,a5] r
     go (TypeApp _ (TypeApp _ (TypeApp _ (TypeApp _ (TypeApp _ (TypeApp _ (TypeApp _ (TypeApp _ tcon a0) a1) a2) a3) a4) a5) a6) r)
-      | tcon == tyFn7 = tsFunction go [a0,a1,a2,a3,a4,a5,a6] r
+      | tcon == tyFn7 || tcon == tyEffectFn7 = tsFunction go [a0,a1,a2,a3,a4,a5,a6] r
     go (TypeApp _ (TypeApp _ (TypeApp _ (TypeApp _ (TypeApp _ (TypeApp _ (TypeApp _ (TypeApp _ (TypeApp _ tcon a0) a1) a2) a3) a4) a5) a6) a7) r)
-      | tcon == tyFn8 = tsFunction go [a0,a1,a2,a3,a4,a5,a6,a7] r
+      | tcon == tyFn8 || tcon == tyEffectFn8 = tsFunction go [a0,a1,a2,a3,a4,a5,a6,a7] r
     go (TypeApp _ (TypeApp _ (TypeApp _ (TypeApp _ (TypeApp _ (TypeApp _ (TypeApp _ (TypeApp _ (TypeApp _ (TypeApp _ tcon a0) a1) a2) a3) a4) a5) a6) a7) a8) r)
-      | tcon == tyFn9 = tsFunction go [a0,a1,a2,a3,a4,a5,a6,a7,a8] r
+      | tcon == tyFn9 || tcon == tyEffectFn9 = tsFunction go [a0,a1,a2,a3,a4,a5,a6,a7,a8] r
     go (TypeApp _ (TypeApp _ (TypeApp _ (TypeApp _ (TypeApp _ (TypeApp _ (TypeApp _ (TypeApp _ (TypeApp _ (TypeApp _ (TypeApp _ tcon a0) a1) a2) a3) a4) a5) a6) a7) a8) a9) r)
-      | tcon == tyFn10 = tsFunction go [a0,a1,a2,a3,a4,a5,a6,a7,a8,a9] r
+      | tcon == tyFn10 || tcon == tyEffectFn10 = tsFunction go [a0,a1,a2,a3,a4,a5,a6,a7,a8,a9] r
     go (TypeApp _ tcon a0)
       | tcon == tyArray = TSArray <$> go a0
-      | tcon == tyStrMap = TSStrMap <$> go a0
+      | tcon == tyStrMap || tcon == tyForeignObject = TSStrMap <$> go a0
       | tcon == tyRecord = case rowToList a0 of
           (pairs, _) -> TSRecord <$> traverse (\(RowListItem { rowListLabel = label, rowListType = ty }) -> mkField label <$> go ty) pairs
       | tcon == tyFn0 = tsFunction go [] a0

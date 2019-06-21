@@ -75,21 +75,29 @@ Primitive types translates as one would imagine:
 Some modules get special handling:
 
 - `Data.Function.Uncurried`
-  - `Fn0 r` --> `() => r`
-  - `Fn2 a0 a1 r` --> `(_0: a0, _1: a2) => r`
-  - `Fn3 a0 a1 a2 r` --> `(_0: a0, _1: a1, _2: a2) => r`
-  - ...
-  - `Fn10 a0 a1 .. a9 r` --> `(_0: a0, ..., _9: a9) => r`
-- `Effect`
-  - `Effect a` -> `() => a`
-- `Control.Monad.Eff`
-  - `Eff e r` -> `() => r`
-- `Data.StrMap.StrMap`
-  - `StrMap t` --> `{[_: string]: t}`
+    - `Fn0 r` --> `() => r`
+    - `Fn2 a0 a1 r` --> `(_0: a0, _1: a2) => r`
+    - `Fn3 a0 a1 a2 r` --> `(_0: a0, _1: a1, _2: a2) => r`
+    - ...
+    - `Fn10 a0 a1 ... a9 r` --> `(_0: a0, _1: a1, ..., _9: a9) => r`
+- `Effect` (from [purescript-effect](https://github.com/purescript/purescript-effect))
+    - `Effect a` -> `() => a`
+- `Effect.Uncurried` (from purescript-effect)
+    - `EffectFn1 a0 r ` -> `(_0: a0) => r`
+    - `EffectFn2 a0 a1 r` -> `(_0: a0, _1: a1) => r`
+    - `EffectFn3 a0 a1 a2 r` -> `(_0: a0, _1: a1, _2: a2) => r`
+    - ...
+    - `EffectFn10 a0 a1 ... a9 r` -> `(_0: a0, _1: a1, ..., _9: a9) => r`
 - `Data.Variant` (from [purescript-variant](https://github.com/natefaubion/purescript-variant))
-  - `Variant (tag1 :: Type1, tag2 :: Type2)` --> `{type: "tag1", value: Type1} | {type: "tag2", value: Type2}`
+    - `Variant (tag1 :: Type1, tag2 :: Type2)` --> `{type: "tag1", value: Type1} | {type: "tag2", value: Type2}`
 - `Data.Nullable` (from [purescript-nullable](https://github.com/purescript-contrib/purescript-nullable))
-  - `Nullable a` --> `a | null`
+    - `Nullable a` --> `a | null`
+- `Foreign.Object` (from [purescript-foreign-object](https://github.com/purescript/purescript-foreign-object))
+    - `Object t` --> `{[_: string]: t}`
+- `Control.Monad.Eff` (deprecated)
+    - `Eff e r` -> `() => r`
+- `Data.StrMap` (deprecated)
+    - `StrMap t` --> `{[_: string]: t}`
 
 ## User-defined Data Types
 
