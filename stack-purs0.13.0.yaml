@@ -1,0 +1,8 @@
+resolver: lts-13.12
+
+packages:
+- .
+
+extra-deps:
+- purescript-0.13.0
+- network-3.0.1.1
