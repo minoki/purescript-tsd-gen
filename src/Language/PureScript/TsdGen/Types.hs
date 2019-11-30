@@ -276,7 +276,7 @@ showFunctionParameters types = T.intercalate ", " $ zipWith (\n ty -> "_" <> T.p
 -- "\"for\""
 objectPropertyToString :: PSString -> Text
 objectPropertyToString ps = case decodeString ps of
-                              Just t | not (isValidJsIdentifier t) -> t
+                              Just t | isValidJsIdentifier t -> t
                               _ -> prettyPrintStringJS ps
 
 isIdentifierStart, isIdentifierPart :: Char -> Bool
