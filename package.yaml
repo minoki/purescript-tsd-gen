@@ -44,3 +44,10 @@ executables:
     dependencies:
     - purescript-tsd-gen
     - optparse-applicative
+
+tests:
+  doctests:
+    main:                doctests.hs
+    dependencies:
+    - doctest >= 0.8
+    - QuickCheck

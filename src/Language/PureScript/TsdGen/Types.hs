@@ -265,6 +265,15 @@ showFunctionParameters [] = ""
 showFunctionParameters [ty] = "_: " <> showTSType ty
 showFunctionParameters types = T.intercalate ", " $ zipWith (\n ty -> "_" <> T.pack (show (n :: Int)) <> ": " <> showTSType ty) [0..] types
 
+-- |
+-- >>> objectPropertyToString "hello"
+-- "hello"
+-- >>> objectPropertyToString "foo'"
+-- "\"foo'\""
+-- >>> objectPropertyToString "0"
+-- "\"0\""
+-- >>> objectPropertyToString "for"
+-- "\"for\""
 objectPropertyToString :: PSString -> Text
 objectPropertyToString ps = case decodeString ps of
                               Just t | not (isValidJsIdentifier t) -> t
@@ -274,6 +283,9 @@ isIdentifierStart, isIdentifierPart :: Char -> Bool
 isIdentifierStart c = isLetter c || c == '$' || c == '_' -- TODO: Match with "ID_Start"
 isIdentifierPart c = isAlphaNum c || c == '$' || c == '_' -- TODO: Match with "ID_Continue"
 
+-- |
+-- prop> all isIdentifierName ["foo", "x86", "PureScript", "$foobar", "__proto__"]
+-- prop> not (any isIdentifierName ["", "foo'", "42"])
 isIdentifierName :: Text -> Bool
 isIdentifierName name = case T.uncons name of
                           Just (head, tail) -> isIdentifierStart head && T.all isIdentifierPart tail
