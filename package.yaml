@@ -31,6 +31,9 @@ dependencies:
 
 library:
   source-dirs: src
+  other-modules:
+  - Language.PureScript.TsdGen.Hardwired
+  - Paths_purescript_tsd_gen
 
 executables:
   purs-tsd-gen:
