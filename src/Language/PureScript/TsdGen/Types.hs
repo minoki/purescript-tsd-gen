@@ -21,9 +21,9 @@ import Control.Monad.Except
 import qualified Data.Map as Map
 import Control.Monad.Reader
 import Data.Monoid ((<>))
-import Data.Char (isLetter,isAlphaNum)
 import qualified Data.List as List
 import Language.PureScript.TsdGen.Hardwired
+import Language.PureScript.TsdGen.JSIdent (JSIdentifier, jsIdentToText)
 
 data Field = Field { fieldLabel :: !Label
                    , fieldType :: !TSType
@@ -52,7 +52,7 @@ data TSType = TSAny
             | TSRecord [Field]
             | TSStrMap TSType -- Data.StrMap.StrMap <=> {[_: string]: T}
             | TSTyVar Text
-            | TSNamed {- module id -} (Maybe Text) {- name -} Text {- arguments -} [TSType]
+            | TSNamed {- module id -} (Maybe JSIdentifier) {- name -} Text {- arguments -} [TSType]
             | TSStringLit PSString
             | TSUnion [TSType] -- empty = never
             | TSIntersection [TSType] -- empty = {} (all)
@@ -67,7 +67,7 @@ constraintToType ct = foldl (TypeApp nullSourceAnn) (TypeConstructor nullSourceA
 data TypeTranslationContext f = TypeTranslationContext { ttcBoundTyVars :: [Text]
                                                        , ttcUnboundTyVars :: [Text]
                                                        , ttcScopedVarKinds :: Maybe [(Text,SourceKind)]
-                                                       , ttcGetModuleId :: ModuleName -> f (Maybe Text)
+                                                       , ttcGetModuleId :: ModuleName -> f (Maybe JSIdentifier)
                                                        , ttcEnvironment :: Environment
                                                        , ttcCurrentModuleName :: ModuleName
                                                        }
@@ -200,18 +200,6 @@ objectPropertyToString ps = case decodeString ps of
                               Just t | isValidJsIdentifier t -> t
                               _ -> prettyPrintStringJS ps
 
-isIdentifierStart, isIdentifierPart :: Char -> Bool
-isIdentifierStart c = isLetter c || c == '$' || c == '_' -- TODO: Match with "ID_Start"
-isIdentifierPart c = isAlphaNum c || c == '$' || c == '_' -- TODO: Match with "ID_Continue"
-
--- |
--- prop> all isIdentifierName ["foo", "x86", "PureScript", "$foobar", "__proto__"]
--- prop> not (any isIdentifierName ["", "foo'", "42"])
-isIdentifierName :: Text -> Bool
-isIdentifierName name = case T.uncons name of
-                          Just (head, tail) -> isIdentifierStart head && T.all isIdentifierPart tail
-                          _ -> False
-
 showTSTypePrec :: Int -> TSType -> Text
 showTSTypePrec prec ty = case ty of
   TSAny -> "any"
@@ -235,7 +223,7 @@ showTSTypePrec prec ty = case ty of
   TSIntersection members -> T.intercalate " & " (map (showTSTypePrec 2) members)
   TSTyVar name -> anyNameToJs name
   TSNamed moduleid name tyArgs -> mid <> name <> ta
-    where mid | Just m <- moduleid = m <> "."
+    where mid | Just m <- moduleid = jsIdentToText m <> "."
               | otherwise = ""
           ta | [] <- tyArgs = ""
                -- the space after '<' is needed to avoid parse error with types like Array<<a>(_: a) => a>

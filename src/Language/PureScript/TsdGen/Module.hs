@@ -1,4 +1,4 @@
-{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE RecordWildCards, NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DataKinds #-}
 module Language.PureScript.TsdGen.Module where
@@ -25,10 +25,10 @@ import Language.PureScript.Label
 import Language.PureScript.Errors
 import Language.PureScript.PSString
 import Language.PureScript.Pretty.Kinds
-import Language.PureScript.CodeGen.JS.Common
 import qualified Language.PureScript.Constants as C
 import Language.PureScript.TsdGen.Types
 import Language.PureScript.TsdGen.Hardwired
+import Language.PureScript.TsdGen.JSIdent
 import Data.Version (showVersion)
 import Paths_purescript_tsd_gen (version)
 
@@ -37,8 +37,8 @@ data ModuleProcessingError = FileReadError
                            | PursTypeError ModuleName MultipleErrors
                            deriving (Show)
 
-data ModuleImport = ModuleImport { moduleImportIdent :: Maybe Text
-                                 }
+newtype ModuleImport = ModuleImport { moduleImportIdent :: Maybe JSIdentifier
+                                    }
 
 type ModuleImportMap = Map.Map ModuleName ModuleImport
 
@@ -71,39 +71,55 @@ recursivelyLoadExterns dir moduleName
 emitComment :: Text -> ModuleWriter ()
 emitComment t = tell ("// " <> TB.fromText t <> "\n")
 
-emitInterface :: Text -> [Text] -> [Field] -> ModuleWriter ()
+emitInterface :: JSIdentifier -> [Text] -> [Field] -> ModuleWriter ()
 emitInterface name tyParams fields = do
   let tyParamsText | null tyParams = mempty
-                   | otherwise = "<" <> TB.fromText (T.intercalate ", " $ map anyNameToJs tyParams) <> ">"
-  tell $ "interface " <> TB.fromText name <> tyParamsText <> " {\n" <> TB.fromText (T.concat (map (\f -> "    " <> showField f <> ";\n") fields)) <> "}\n"
+                   | otherwise = "<" <> TB.fromText (T.intercalate ", " tyParams) <> ">"
+  tell $ "interface " <> TB.fromText (jsIdentToText name) <> tyParamsText <> " {\n" <> TB.fromText (T.concat (map (\f -> "    " <> showField f <> ";\n") fields)) <> "}\n"
 
-emitTypeDeclaration :: Maybe Text -> Text -> [Text] -> TSType -> ModuleWriter ()
+emitTypeDeclaration :: Maybe Text -> JSIdentifier -> [Text] -> TSType -> ModuleWriter ()
 emitTypeDeclaration comment name tyParams ty = do
   let commentPart = case comment of
                  Just commentText -> "/*" <> TB.fromText commentText <> "*/ "
                  Nothing -> mempty
   let tyParamsText | null tyParams = mempty
-                   | otherwise = "<" <> TB.fromText (T.intercalate ", " $ map anyNameToJs tyParams) <> ">"
-  tell $ "export type " <> commentPart <> TB.fromText name <> tyParamsText <> " = " <> TB.fromText (showTSType ty) <> ";\n"
+                   | otherwise = "<" <> TB.fromText (T.intercalate ", " tyParams) <> ">"
+  tell $ "export type " <> commentPart <> TB.fromText (jsIdentToText name) <> tyParamsText <> " = " <> TB.fromText (showTSType ty) <> ";\n"
 
-emitValueDeclaration :: Maybe Text -> Text -> TSType -> ModuleWriter ()
-emitValueDeclaration comment name ty
-  | nameIsJsReserved name = do
-      let jsName = "$$" <> TB.fromText name
-      tell $ "declare const " <> jsName <> ": " <> TB.fromText (showTSType ty) <> ";\nexport " <> commentPart <> "{ " <> jsName <> " as " <> TB.fromText name <> " };\n"
-  | isIdentifierName name = do
-      tell $ "export const " <> commentPart <> TB.fromText name <> ": " <> TB.fromText (showTSType ty) <> ";\n"
-  | otherwise = do
-      -- As of PureScript 0.11.7, the compiler emits symbols that contain prime symbol `'`;
-      -- Such identifiers cannot be used in ES6 modules.
-      -- See: https://github.com/purescript/purescript/issues/2558
-      tell $ "// The identifier \"" <> TB.fromText name <> "\" cannot be expressed in JavaScript:\n// export const " <> commentPart <> TB.fromText name <> ": " <> TB.fromText (showTSType ty) <> ";\n"
-        where commentPart = case comment of
-                              Just commentText -> "/*" <> TB.fromText commentText <> "*/ "
-                              Nothing -> mempty
+data ValueExportName = NeedsRenaming { exportedName :: JSIdentifierName, internalName :: JSIdentifier }
+                     | NoRenaming JSIdentifier
+                     | NotExpressibleInJSModule Text
 
-emitNamespaceImport :: Monad m => Text -> ModuleName -> WriterT TB.Builder m ()
-emitNamespaceImport ident moduleName = tell $ "import * as " <> TB.fromText ident <> " from \"../" <> TB.fromText (runModuleName moduleName) <> "\";\n"
+psNameToJSValueExportName :: Text -> ValueExportName
+psNameToJSValueExportName psName
+  = case ensureIdentifierName psName of
+      Nothing -> NotExpressibleInJSModule psName -- may contain a prime symbol
+      Just identifierName -> case ensureNonKeyword identifierName of
+                               Nothing -> NeedsRenaming { exportedName = identifierName, internalName = anyNameToJs psName }
+                               Just identifier -> NoRenaming identifier
+
+emitValueDeclaration :: Maybe Text -> ValueExportName -> TSType -> ModuleWriter ()
+emitValueDeclaration comment vname ty = case vname of
+  NeedsRenaming { exportedName, internalName } -> do
+    let intName = TB.fromText (jsIdentToText internalName)
+        extName = TB.fromText (jsIdentToText exportedName)
+    tell $ "declare const " <> intName <> ": " <> TB.fromText (showTSType ty) <> ";\n\
+           \export " <> commentPart <> "{ " <> intName <> " as " <> extName <> " };\n"
+  NoRenaming name -> do
+    tell $ "export const " <> commentPart <> TB.fromText (jsIdentToText name) <> ": " <> TB.fromText (showTSType ty) <> ";\n"
+  NotExpressibleInJSModule name -> do
+    -- As of PureScript 0.13.5, the compiler emits symbols that contain prime symbol `'`;
+    -- Such identifiers cannot be used in ES6 modules.
+    -- See: https://github.com/purescript/purescript/issues/2558
+    --      https://github.com/purescript/purescript/issues/3613
+    tell $ "// The identifier \"" <> TB.fromText name <> "\" cannot be expressed in JavaScript:\n\
+           \// export const " <> commentPart <> TB.fromText name <> ": " <> TB.fromText (showTSType ty) <> ";\n"
+  where commentPart = case comment of
+                        Just commentText -> "/*" <> TB.fromText commentText <> "*/ "
+                        Nothing -> mempty
+
+emitNamespaceImport :: Monad m => JSIdentifier -> ModuleName -> WriterT TB.Builder m ()
+emitNamespaceImport ident moduleName = tell $ "import * as " <> TB.fromText (jsIdentToText ident) <> " from \"../" <> TB.fromText (runModuleName moduleName) <> "\";\n"
 
 emitImport :: Monad m => ModuleName -> WriterT TB.Builder m ()
 emitImport moduleName = tell $ "import \"../" <> TB.fromText (runModuleName moduleName) <> "\";\n"
@@ -142,13 +158,13 @@ processLoadedModule env ef importAll = execWriterT $ do
     qualCurrentModule = Qualified (Just currentModuleName)
 
     -- Get the JS identifier for given module
-    getModuleId :: ModuleName -> ModuleWriter (Maybe Text)
+    getModuleId :: ModuleName -> ModuleWriter (Maybe JSIdentifier)
     getModuleId (ModuleName [ProperName prim]) | prim == C.prim = return Nothing -- should not occur
     getModuleId moduleName@(ModuleName components) = do
       mid <- gets (Map.lookup moduleName)
       case mid of
         Nothing -> do -- not found
-          let moduleId = Just $ T.intercalate "_" (properToJs <$> components)
+          let moduleId = Just $ anyNameToJs $ T.intercalate "_" (runProperName <$> components)
           -- TODO: Make sure moduleId is unique
           modify (Map.insert moduleName (ModuleImport { moduleImportIdent = moduleId }))
           return moduleId
@@ -166,7 +182,7 @@ processLoadedModule env ef importAll = execWriterT $ do
 
     processDecl :: ExternsDeclaration -> ModuleWriter ()
     processDecl EDType{..} = do
-      let name = properToJs edTypeName
+      let name = edTypeName
           qTypeName = qualCurrentModule edTypeName
       if isSimpleKind edTypeKind
         then case edTypeDeclarationKind of
@@ -176,9 +192,9 @@ processLoadedModule env ef importAll = execWriterT $ do
                      case extractTypes edTypeKind params of
                        Just typeParameters -> do
                          member' <- pursTypeToTSTypeX typeParameters member
-                         emitTypeDeclaration (Just "newtype") name typeParameters member'
+                         emitTypeDeclaration (Just "newtype") (properToJs name) typeParameters member'
                        Nothing -> do
-                         emitComment $ "newtype " <> name <> ": kind annotation was not available"
+                         emitComment $ "newtype " <> runProperName name <> ": kind annotation was not available"
 
                -- data declaration:
                DataType params ctors -> do
@@ -190,7 +206,7 @@ processLoadedModule env ef importAll = execWriterT $ do
                          -- so just reference it.
                            | qualCurrentModule ctorPName `Map.member` dataConstructors env
                            = let fv = typeParameters `List.intersect` concatMap freeTypeVariables members
-                             in TSNamed Nothing (name <> "$$" <> properToJs ctorPName) (map TSTyVar fv)
+                             in TSNamed Nothing (jsIdentToText (properToJs name) <> "$$" <> jsIdentToText (properToJs ctorPName)) (map TSTyVar fv)
 
                          -- the data constructor is not exportd (i.e. abstract):
                          -- the marker fields are non-optional, so that they cannot be implicitly casted from other types.
@@ -199,9 +215,9 @@ processLoadedModule env ef importAll = execWriterT $ do
                                       , mkField "$$pursTag" (TSStringLit $ mkString $ runProperName ctorPName)
                                       , mkField "$$abstractMarker" TSNever
                                       ]
-                     emitTypeDeclaration (Just "data") name typeParameters (TSUnion $ map buildCtorType ctors)
+                     emitTypeDeclaration (Just "data") (properToJs name) typeParameters (TSUnion $ map buildCtorType ctors)
                    Nothing -> do
-                     emitComment $ "data " <> name <> ": kind annotation was not available"
+                     emitComment $ "data " <> runProperName name <> ": kind annotation was not available"
 
                -- type synonym:
                TypeSynonym
@@ -209,35 +225,35 @@ processLoadedModule env ef importAll = execWriterT $ do
                      case extractTypes edTypeKind synonymArguments of
                        Just typeParameters -> do
                          tsty <- pursTypeToTSTypeX typeParameters synonymType
-                         emitTypeDeclaration (Just "synonym") name typeParameters tsty
+                         emitTypeDeclaration (Just "synonym") (properToJs name) typeParameters tsty
                        Nothing -> do
-                         emitComment $ "type synonym " <> name <> ": kind annotation was not available"
-                 | otherwise -> emitComment ("type (synonym) " <> name <> ": " <> prettyPrintKind edTypeKind)
+                         emitComment $ "type synonym " <> runProperName name <> ": kind annotation was not available"
+                 | otherwise -> emitComment ("type (synonym) " <> runProperName name <> ": " <> prettyPrintKind edTypeKind)
 
                -- foreign import data:
                ExternData
                  | qTypeName == qnUnit -> do
                      -- Data.Unit
-                     emitTypeDeclaration (Just "builtin") "Unit" [] (TSRecord [(mkOptionalField "$$pursType" (TSStringLit "Data.Unit.Unit"))])
+                     emitTypeDeclaration (Just "builtin") (anyNameToJs "Unit") [] (TSRecord [(mkOptionalField "$$pursType" (TSStringLit "Data.Unit.Unit"))])
                  | qTypeName `List.elem` builtins -> do
                      pst <- pursTypeToTSTypeX typeParameters (foldl (TypeApp nullSourceAnn) (TypeConstructor nullSourceAnn qTypeName) (map (TypeVar nullSourceAnn) typeParameters))
-                     emitTypeDeclaration (Just "builtin") name typeParameters pst
+                     emitTypeDeclaration (Just "builtin") (properToJs name) typeParameters pst
                  | otherwise -> do
                      -- Foreign type: just use 'any' type.
                      -- External '.d.ts' file needs to be supplied for better typing.
-                     emitTypeDeclaration (Just "foreign") name typeParameters (TSUnknown "foreign")
+                     emitTypeDeclaration (Just "foreign") (properToJs name) typeParameters (TSUnknown "foreign")
                  where builtins = [qnFn0,qnFn2,qnFn3,qnFn4,qnFn5,qnFn6,qnFn7,qnFn8,qnFn9,qnFn10,qnStrMap,qnEffect,qnNullable]
                        n = numberOfTypeParams edTypeKind
                        typeParameters = map (\i -> "a" <> T.pack (show i)) [0..n-1]
 
                -- others:
-               LocalTypeVariable -> emitComment ("unexpected local type variable: " <> name <> " :: " <> prettyPrintKind edTypeKind)
-               ScopedTypeVar -> emitComment ("unexpected scoped type variable: " <> name <> " :: " <> prettyPrintKind edTypeKind)
+               LocalTypeVariable -> emitComment ("unexpected local type variable: " <> runProperName name <> " :: " <> prettyPrintKind edTypeKind)
+               ScopedTypeVar -> emitComment ("unexpected scoped type variable: " <> runProperName name <> " :: " <> prettyPrintKind edTypeKind)
 
-        else emitComment ("type " <> name <> " :: " <> prettyPrintKind edTypeKind <> " : unsupported kind")
+        else emitComment ("type " <> runProperName name <> " :: " <> prettyPrintKind edTypeKind <> " : unsupported kind")
 
     processDecl EDDataConstructor{..} = do
-      let name = properToJs edDataCtorName
+      let name = edDataCtorName
       case Map.lookup (qualCurrentModule edDataCtorTypeCtor) (types env) of
         Just (k, DataType typeParameters constructors)
           | isSimpleKind k
@@ -248,7 +264,7 @@ processLoadedModule env ef importAll = execWriterT $ do
                   -- Data constructor for a 'data' declaration:
                   -- Emit an interface so that type refinement via 'instanceof' works.
                   let fieldTypeVars = map fst typeParameters `List.intersect` concatMap freeTypeVariables fieldTypes
-                      dataCtorSubtypeName = properToJs edDataCtorTypeCtor <> "$$" <> name
+                      dataCtorSubtypeName = jsIdentToText (properToJs edDataCtorTypeCtor) <> "$$" <> jsIdentToText (properToJs name)
                       dataCtorSubtype = TSNamed Nothing dataCtorSubtypeName (map TSTyVar fieldTypeVars)
                   fieldTypesTS <- mapM (pursTypeToTSTypeX fieldTypeVars) fieldTypes
                   let mkMarkerField | length constructors == 1 = mkOptionalField -- allow structural subtyping if there are only one constructor
@@ -257,7 +273,9 @@ processLoadedModule env ef importAll = execWriterT $ do
                                     , mkMarkerField "$$pursTag" (TSStringLit (mkString $ runProperName edDataCtorName))
                                     ]
                       dataFields = zipWith (\f ty -> mkField (Label $ mkString $ runIdent f) ty) edDataCtorFields fieldTypesTS
-                  emitInterface dataCtorSubtypeName fieldTypeVars (makerFields <> dataFields)
+                      Just subtypeName = ensureIdentifierName dataCtorSubtypeName
+                      Just subtypeIdent = ensureNonKeyword subtypeName
+                  emitInterface subtypeIdent fieldTypeVars (makerFields <> dataFields)
 
                   -- The constructor function has a 'new' signature returning that interface.
                   let ctorFieldName | null edDataCtorFields = "value"
@@ -265,21 +283,21 @@ processLoadedModule env ef importAll = execWriterT $ do
                       ctorType = TSRecord [ mkField ctorFieldName tsty
                                           , NewSignature fieldTypeVars fieldTypesTS dataCtorSubtype
                                           ]
-                  emitValueDeclaration (Just "data ctor") name ctorType
+                  emitValueDeclaration (Just "data ctor") (psNameToJSValueExportName (runProperName name)) ctorType
 
                 Newtype ->
                   -- Data constructor for a 'newtype' declaration:
                   -- No 'new' signature: just define a function.
-                  emitValueDeclaration (Just "newtype data ctor") name tsty
+                  emitValueDeclaration (Just "newtype data ctor") (psNameToJSValueExportName (runProperName name)) tsty
 
-        Nothing -> emitComment $ "the type of an exported data constructor must be exported: " <> name
-        Just (k, DataType _typeParameters _constructors) -> emitComment $ "unrecognized data constructor: " <> name <> " kind: " <> prettyPrintKind k
-        _ -> emitComment $ "unrecognized data constructor: " <> name
+        Nothing -> emitComment $ "the type of an exported data constructor must be exported: " <> runProperName name
+        Just (k, DataType _typeParameters _constructors) -> emitComment $ "unrecognized data constructor: " <> runProperName name <> " kind: " <> prettyPrintKind k
+        _ -> emitComment $ "unrecognized data constructor: " <> runProperName name
 
     processDecl EDValue{..} = do
-      let name = identToJs edValueName
+      let name = edValueName
       tsty <- pursTypeToTSTypeX [] edValueType
-      emitValueDeclaration Nothing name tsty
+      emitValueDeclaration Nothing (psNameToJSValueExportName (runIdent name)) tsty
 
     processDecl EDInstance{..}
       | Just constraints <- edInstanceConstraints
@@ -289,9 +307,9 @@ processLoadedModule env ef importAll = execWriterT $ do
               dictTy = foldl (TypeApp nullSourceAnn) (TypeConstructor nullSourceAnn qDictTypeName) edInstanceTypes
               desugaredInstanceType = quantify (foldr (ConstrainedType nullSourceAnn) dictTy constraints)
           instanceTy <- pursTypeToTSTypeX [] desugaredInstanceType
-          emitValueDeclaration (Just "instance") name instanceTy
-      | otherwise = emitComment ("invalid instance declaration '" <> name <> "'")
-      where name = identToJs edInstanceName :: Text
+          emitValueDeclaration (Just "instance") (psNameToJSValueExportName (runIdent edInstanceName)) instanceTy
+      | otherwise = emitComment ("invalid instance declaration '" <> runIdent edInstanceName <> "'")
+      where -- name = identToJs edInstanceName :: JSIdentifier
             qDictTypeName = fmap coerceProperName edInstanceClassName :: Qualified (ProperName 'TypeName)
 
     processDecl EDKind{..} = do
