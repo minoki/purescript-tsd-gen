@@ -14,7 +14,7 @@ import Control.Monad.State
 import Control.Monad.Except
 import System.IO (hPutStr,stderr)
 import System.FilePath ((</>))
-import System.Directory (createDirectoryIfMissing,listDirectory)
+import System.Directory (createDirectoryIfMissing,listDirectory,doesDirectoryExist)
 import Options.Applicative
 import qualified Language.PureScript (version)
 import Language.PureScript.Externs
@@ -93,7 +93,8 @@ main = do
   p <- execParser opts
   case p of
     PursTsdGen{..} -> do
-      allModules <- listDirectory pursOutputDirectory
+      dirEntries <- listDirectory pursOutputDirectory
+      allModules <- filterM (\name -> doesDirectoryExist (pursOutputDirectory </> name)) dirEntries
       let selectedModules = case moduleNames of
                               [] -> allModules
                               _ -> let (patterns,literals) = List.partition isGlobPattern moduleNames
