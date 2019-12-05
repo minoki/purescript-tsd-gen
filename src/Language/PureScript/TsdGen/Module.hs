@@ -3,7 +3,6 @@
 {-# LANGUAGE DataKinds #-}
 module Language.PureScript.TsdGen.Module where
 import Prelude hiding (elem,notElem,lookup)
-import Data.Maybe
 import qualified Data.List as List
 import qualified Data.Map as Map
 import qualified Data.Text as T
@@ -148,7 +147,7 @@ processLoadedModule env ef importAll = execWriterT $ do
       mid <- gets (Map.lookup moduleName)
       case mid of
         Nothing -> do -- not found
-          let moduleId = Just $ T.intercalate "_" (runProperName <$> components)
+          let moduleId = Just $ T.intercalate "_" (properToJs <$> components)
           -- TODO: Make sure moduleId is unique
           modify (Map.insert moduleName (ModuleImport { moduleImportIdent = moduleId }))
           return moduleId
@@ -166,7 +165,7 @@ processLoadedModule env ef importAll = execWriterT $ do
 
     processDecl :: ExternsDeclaration -> ModuleWriter ()
     processDecl EDType{..} = do
-      let name = runProperName edTypeName
+      let name = properToJs edTypeName
           qTypeName = qualCurrentModule edTypeName
       if isSimpleKind edTypeKind
         then case edTypeDeclarationKind of
@@ -190,7 +189,7 @@ processLoadedModule env ef importAll = execWriterT $ do
                          -- so just reference it.
                            | qualCurrentModule ctorPName `Map.member` dataConstructors env
                            = let fv = typeParameters `List.intersect` concatMap freeTypeVariables members
-                             in TSNamed Nothing (runProperName edTypeName <> "$$" <> runProperName ctorPName) (map TSTyVar fv)
+                             in TSNamed Nothing (name <> "$$" <> properToJs ctorPName) (map TSTyVar fv)
 
                          -- the data constructor is not exportd (i.e. abstract):
                          -- the marker fields are non-optional, so that they cannot be implicitly casted from other types.
@@ -237,7 +236,7 @@ processLoadedModule env ef importAll = execWriterT $ do
         else emitComment ("type " <> name <> " :: " <> prettyPrintKind edTypeKind <> " : unsupported kind")
 
     processDecl EDDataConstructor{..} = do
-      let name = runProperName edDataCtorName
+      let name = properToJs edDataCtorName
       case Map.lookup (qualCurrentModule edDataCtorTypeCtor) (types env) of
         Just (k, DataType typeParameters constructors)
           | isSimpleKind k
@@ -248,7 +247,7 @@ processLoadedModule env ef importAll = execWriterT $ do
                   -- Data constructor for a 'data' declaration:
                   -- Emit an interface so that type refinement via 'instanceof' works.
                   let fieldTypeVars = map fst typeParameters `List.intersect` concatMap freeTypeVariables fieldTypes
-                      dataCtorSubtypeName = runProperName edDataCtorTypeCtor <> "$$" <> runProperName edDataCtorName
+                      dataCtorSubtypeName = properToJs edDataCtorTypeCtor <> "$$" <> name
                       dataCtorSubtype = TSNamed Nothing dataCtorSubtypeName (map TSTyVar fieldTypeVars)
                   fieldTypesTS <- mapM (pursTypeToTSTypeX fieldTypeVars) fieldTypes
                   let mkMarkerField | length constructors == 1 = mkOptionalField -- allow structural subtyping if there are only one constructor
@@ -277,7 +276,7 @@ processLoadedModule env ef importAll = execWriterT $ do
         _ -> emitComment $ "unrecognized data constructor: " <> name
 
     processDecl EDValue{..} = do
-      let name = runIdent edValueName
+      let name = identToJs edValueName
       tsty <- pursTypeToTSTypeX [] edValueType
       emitValueDeclaration Nothing name tsty
 
@@ -291,7 +290,7 @@ processLoadedModule env ef importAll = execWriterT $ do
           instanceTy <- pursTypeToTSTypeX [] desugaredInstanceType
           emitValueDeclaration (Just "instance") name instanceTy
       | otherwise = emitComment ("invalid instance declaration '" <> name <> "'")
-      where name = runIdent edInstanceName :: Text
+      where name = identToJs edInstanceName :: Text
             qDictTypeName = fmap coerceProperName edInstanceClassName :: Qualified (ProperName 'TypeName)
 
     processDecl EDKind{..} = do

@@ -225,7 +225,7 @@ pursTypeToTSType = go
         Just (k, _) | isSimpleKind k -> do
           getModuleId <- asks ttcGetModuleId
           moduleId <- lift (lift (getModuleId moduleName))
-          pure (TSNamed moduleId (runProperName typeName) [])
+          pure (TSNamed moduleId (properToJs typeName) [])
         _ -> pure (TSUnknown $ T.pack $ show ty)
     go (ConstrainedType _ ct inner) = tsFunction go [constraintToType ct] inner
     go ty = pure (TSUnknown $ T.pack $ show ty)
