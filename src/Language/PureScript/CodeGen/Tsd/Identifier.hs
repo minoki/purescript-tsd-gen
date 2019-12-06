@@ -1,6 +1,6 @@
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE DataKinds #-}
-module Language.PureScript.TsdGen.JSIdent
+module Language.PureScript.CodeGen.Tsd.Identifier
   ( isIdentifierName
   , IncludeKeywords(..)
   , JSIdent

@@ -28,7 +28,7 @@ import Language.PureScript.Pretty.Kinds
 import qualified Language.PureScript.Constants as C
 import Language.PureScript.TsdGen.Types
 import Language.PureScript.TsdGen.Hardwired
-import Language.PureScript.TsdGen.JSIdent
+import Language.PureScript.CodeGen.Tsd.Identifier
 import Data.Version (showVersion)
 import Paths_purescript_tsd_gen (version)
 

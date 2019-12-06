@@ -23,7 +23,7 @@ import Control.Monad.Reader
 import Data.Monoid ((<>))
 import qualified Data.List as List
 import Language.PureScript.TsdGen.Hardwired
-import Language.PureScript.TsdGen.JSIdent (JSIdentifier, jsIdentToText)
+import Language.PureScript.CodeGen.Tsd.Identifier (JSIdentifier, jsIdentToText)
 
 data Field = Field { fieldLabel :: !Label
                    , fieldType :: !TSType
