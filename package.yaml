@@ -29,6 +29,9 @@ dependencies:
 - filepath
 - directory
 
+ghc-options:
+- -Wall
+
 library:
   source-dirs: src
   other-modules:
@@ -43,7 +46,6 @@ executables:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
-    - -Wall
     dependencies:
     - purescript-tsd-gen
     - optparse-applicative

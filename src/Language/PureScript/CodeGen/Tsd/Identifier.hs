@@ -48,7 +48,7 @@ isIdentifierPart c = isAlphaNum c || c == '$' || c == '_' -- TODO: Match with "I
 -- prop> not (any isIdentifierName ["", "foo'", "42"])
 isIdentifierName :: T.Text -> Bool
 isIdentifierName name = case T.uncons name of
-                          Just (head, tail) -> isIdentifierStart head && T.all isIdentifierPart tail
+                          Just (x0, xs) -> isIdentifierStart x0 && T.all isIdentifierPart xs
                           _ -> False
 
 data IncludeKeywords = IncludeKeywords
