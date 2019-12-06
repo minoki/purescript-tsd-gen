@@ -121,7 +121,7 @@ pursTypeToTSType = go
         isBound <- asks (\r -> List.elem name (ttcBoundTyVars r))
         if isBound
           then pure (TSTyVar name)
-          else pure (TSUnknown $ T.pack $ "type variable " ++ T.unpack name)
+          else pure (TSUnknown $ "type variable " <> name)
     go ty@(TypeConstructor _ _qName)
       | ty == tyString = pure TSString
       | ty == tyChar = pure TSString
