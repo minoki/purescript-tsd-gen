@@ -78,28 +78,39 @@ emitInterface name tyParams fields = do
                    | otherwise = "<" <> TB.fromText (T.intercalate ", " tyParams) <> ">"
   tell $ "interface " <> JS.identToBuilder name <> tyParamsText <> " {\n" <> mconcat (map (\f -> "    " <> showField f <> ";\n") fields) <> "}\n"
 
-emitTypeDeclaration :: Maybe Text -> JS.Identifier -> [Text] -> TSType -> ModuleWriter ()
-emitTypeDeclaration comment name tyParams ty = do
+data ExportName = NeedsRenaming { exportedName :: JS.IdentifierName, internalName :: JS.Identifier }
+                | NoRenaming JS.Identifier
+                | NotExpressibleInJSModule { nonExportableName :: Text, internalName :: JS.Identifier }
+
+psNameToJSExportName :: Text -> ExportName
+psNameToJSExportName psName
+  = case JS.ensureIdentifierName psName of
+      Nothing -> NotExpressibleInJSModule { nonExportableName = psName -- may contain a prime symbol
+                                          , internalName = JS.anyNameToJs psName
+                                          }
+      Just identifierName -> case JS.ensureNonKeyword identifierName of
+                               Nothing -> NeedsRenaming { exportedName = identifierName
+                                                        , internalName = JS.anyNameToJs psName
+                                                        }
+                               Just identifier -> NoRenaming identifier
+
+emitTypeDeclaration :: Maybe Text -> ExportName -> [Text] -> TSType -> ModuleWriter ()
+emitTypeDeclaration comment ename tyParams ty = do
   let commentPart = case comment of
                  Just commentText -> "/*" <> TB.fromText commentText <> "*/ "
                  Nothing -> mempty
   let tyParamsText | null tyParams = mempty
                    | otherwise = "<" <> TB.fromText (T.intercalate ", " tyParams) <> ">"
-  tell $ "export type " <> commentPart <> JS.identToBuilder name <> tyParamsText <> " = " <> showTSType ty <> ";\n"
+  case ename of
+    NoRenaming name -> do
+      tell $ "export type " <> commentPart <> JS.identToBuilder name <> tyParamsText <> " = " <> showTSType ty <> ";\n"
+    NeedsRenaming { exportedName, internalName } -> do
+      tell $ "type " <> commentPart <> JS.identToBuilder internalName <> tyParamsText <> " = " <> showTSType ty <> ";\n\
+             \export { " <> JS.identToBuilder internalName <> " as " <> JS.identToBuilder exportedName <> " };\n"
+    NotExpressibleInJSModule { internalName } -> do
+      tell $ "export type " <> commentPart <> JS.identToBuilder internalName <> tyParamsText <> " = " <> showTSType ty <> ";\n"
 
-data ValueExportName = NeedsRenaming { exportedName :: JS.IdentifierName, internalName :: JS.Identifier }
-                     | NoRenaming JS.Identifier
-                     | NotExpressibleInJSModule { nonExportableName :: Text, internalName :: JS.Identifier }
-
-psNameToJSValueExportName :: Text -> ValueExportName
-psNameToJSValueExportName psName
-  = case JS.ensureIdentifierName psName of
-      Nothing -> NotExpressibleInJSModule { nonExportableName = psName, internalName = JS.anyNameToJs psName } -- may contain a prime symbol
-      Just identifierName -> case JS.ensureNonKeyword identifierName of
-                               Nothing -> NeedsRenaming { exportedName = identifierName, internalName = JS.anyNameToJs psName }
-                               Just identifier -> NoRenaming identifier
-
-emitValueDeclaration :: Maybe Text -> ValueExportName -> TSType -> ModuleWriter ()
+emitValueDeclaration :: Maybe Text -> ExportName -> TSType -> ModuleWriter ()
 emitValueDeclaration comment vname ty = case vname of
   NeedsRenaming { exportedName, internalName } -> do
     tell $ "declare const " <> JS.identToBuilder internalName <> ": " <> showTSType ty <> ";\n\
@@ -192,7 +203,7 @@ processLoadedModule env ef importAll = execWriterT $ do
                      case extractTypes edTypeKind params of
                        Just typeParameters -> do
                          member' <- pursTypeToTSTypeX typeParameters member
-                         emitTypeDeclaration (Just "newtype") (JS.properToJs name) typeParameters member'
+                         emitTypeDeclaration (Just "newtype") (psNameToJSExportName (runProperName name)) typeParameters member'
                        Nothing -> do
                          emitComment $ "newtype " <> runProperName name <> ": kind annotation was not available"
 
@@ -215,7 +226,7 @@ processLoadedModule env ef importAll = execWriterT $ do
                                       , mkField "$$pursTag" (TSStringLit $ mkString $ runProperName ctorPName)
                                       , mkField "$$abstractMarker" TSNever
                                       ]
-                     emitTypeDeclaration (Just "data") (JS.properToJs name) typeParameters (TSUnion $ map buildCtorType ctors)
+                     emitTypeDeclaration (Just "data") (psNameToJSExportName (runProperName name)) typeParameters (TSUnion $ map buildCtorType ctors)
                    Nothing -> do
                      emitComment $ "data " <> runProperName name <> ": kind annotation was not available"
 
@@ -225,7 +236,7 @@ processLoadedModule env ef importAll = execWriterT $ do
                      case extractTypes edTypeKind synonymArguments of
                        Just typeParameters -> do
                          tsty <- pursTypeToTSTypeX typeParameters synonymType
-                         emitTypeDeclaration (Just "synonym") (JS.properToJs name) typeParameters tsty
+                         emitTypeDeclaration (Just "synonym") (psNameToJSExportName (runProperName name)) typeParameters tsty
                        Nothing -> do
                          emitComment $ "type synonym " <> runProperName name <> ": kind annotation was not available"
                  | otherwise -> emitComment ("type (synonym) " <> runProperName name <> ": " <> prettyPrintKind edTypeKind)
@@ -234,14 +245,14 @@ processLoadedModule env ef importAll = execWriterT $ do
                ExternData
                  | qTypeName == qnUnit -> do
                      -- Data.Unit
-                     emitTypeDeclaration (Just "builtin") (JS.anyNameToJs "Unit") [] (TSRecord [(mkOptionalField "$$pursType" (TSStringLit "Data.Unit.Unit"))])
+                     emitTypeDeclaration (Just "builtin") (psNameToJSExportName "Unit") [] (TSRecord [(mkOptionalField "$$pursType" (TSStringLit "Data.Unit.Unit"))])
                  | qTypeName `List.elem` builtins -> do
                      pst <- pursTypeToTSTypeX typeParameters (foldl (TypeApp nullSourceAnn) (TypeConstructor nullSourceAnn qTypeName) (map (TypeVar nullSourceAnn) typeParameters))
-                     emitTypeDeclaration (Just "builtin") (JS.properToJs name) typeParameters pst
+                     emitTypeDeclaration (Just "builtin") (psNameToJSExportName (runProperName name)) typeParameters pst
                  | otherwise -> do
                      -- Foreign type: just use 'any' type.
                      -- External '.d.ts' file needs to be supplied for better typing.
-                     emitTypeDeclaration (Just "foreign") (JS.properToJs name) typeParameters (TSUnknown "foreign")
+                     emitTypeDeclaration (Just "foreign") (psNameToJSExportName (runProperName name)) typeParameters (TSUnknown "foreign")
                  where builtins = [qnFn0,qnFn2,qnFn3,qnFn4,qnFn5,qnFn6,qnFn7,qnFn8,qnFn9,qnFn10
                                   ,qnEffect,qnEffectFn1,qnEffectFn2,qnEffectFn3,qnEffectFn4,qnEffectFn5,qnEffectFn6,qnEffectFn7,qnEffectFn8,qnEffectFn9,qnEffectFn10
                                   ,qnStrMap,qnForeignObject,qnNullable]
@@ -285,12 +296,12 @@ processLoadedModule env ef importAll = execWriterT $ do
                       ctorType = TSRecord [ mkField ctorFieldName tsty
                                           , NewSignature fieldTypeVars fieldTypesTS dataCtorSubtype
                                           ]
-                  emitValueDeclaration (Just "data ctor") (psNameToJSValueExportName (runProperName name)) ctorType
+                  emitValueDeclaration (Just "data ctor") (psNameToJSExportName (runProperName name)) ctorType
 
                 Newtype ->
                   -- Data constructor for a 'newtype' declaration:
                   -- No 'new' signature: just define a function.
-                  emitValueDeclaration (Just "newtype data ctor") (psNameToJSValueExportName (runProperName name)) tsty
+                  emitValueDeclaration (Just "newtype data ctor") (psNameToJSExportName (runProperName name)) tsty
 
         Nothing -> emitComment $ "the type of an exported data constructor must be exported: " <> runProperName name
         Just (k, DataType _typeParameters _constructors) -> emitComment $ "unrecognized data constructor: " <> runProperName name <> " kind: " <> prettyPrintKind k
@@ -299,7 +310,7 @@ processLoadedModule env ef importAll = execWriterT $ do
     processDecl EDValue{..} = do
       let name = edValueName
       tsty <- pursTypeToTSTypeX [] edValueType
-      emitValueDeclaration Nothing (psNameToJSValueExportName (runIdent name)) tsty
+      emitValueDeclaration Nothing (psNameToJSExportName (runIdent name)) tsty
 
     processDecl EDInstance{..}
       | Just constraints <- edInstanceConstraints
@@ -309,7 +320,7 @@ processLoadedModule env ef importAll = execWriterT $ do
               dictTy = foldl (TypeApp nullSourceAnn) (TypeConstructor nullSourceAnn qDictTypeName) edInstanceTypes
               desugaredInstanceType = quantify (foldr (ConstrainedType nullSourceAnn) dictTy constraints)
           instanceTy <- pursTypeToTSTypeX [] desugaredInstanceType
-          emitValueDeclaration (Just "instance") (psNameToJSValueExportName (runIdent edInstanceName)) instanceTy
+          emitValueDeclaration (Just "instance") (psNameToJSExportName (runIdent edInstanceName)) instanceTy
       | otherwise = emitComment ("invalid instance declaration '" <> runIdent edInstanceName <> "'")
       where -- name = identToJs edInstanceName :: JS.Identifier
             qDictTypeName = fmap coerceProperName edInstanceClassName :: Qualified (ProperName 'TypeName)
