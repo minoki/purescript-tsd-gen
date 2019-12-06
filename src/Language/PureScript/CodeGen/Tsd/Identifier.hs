@@ -57,7 +57,7 @@ data IncludeKeywords = IncludeKeywords
                      | ExcludeKeywords
 
 newtype Ident (k :: IncludeKeywords) = Ident T.Text
-  deriving (Eq,Show)
+  deriving (Eq,Ord,Show)
 
 identToText :: Ident k -> T.Text
 identToText (Ident name) = name
