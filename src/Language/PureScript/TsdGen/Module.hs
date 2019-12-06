@@ -184,6 +184,10 @@ processLoadedModule env ef importAll = execWriterT $ do
                         _:_ -> "/*" <> mconcat (List.intersperse "+" $ map TB.fromText $ reverse comments) <> "*/ "
     tell $ "export " <> commentPart <> "{ " <> JS.identToBuilder internalName <> " as " <> JS.identToBuilder externalName <> " };\n"
 
+  -- `export {};` is necessary to suppress implicit exports...
+  when (Map.null renamedExportMap) $ do
+    tell "export {};\n"
+
   -- TODO: module re-exports: dig efExports / ReExportRef
 
   where
