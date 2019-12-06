@@ -1,6 +1,6 @@
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE OverloadedStrings #-}
 module Language.PureScript.CodeGen.Tsd.Identifier
   ( isIdentifierName
   , IncludeKeywords(..)
@@ -16,11 +16,11 @@ module Language.PureScript.CodeGen.Tsd.Identifier
   , ensureIdentifierName
   , appendWithDoubleDollars
   ) where
-import qualified Language.PureScript.Names as PS
-import qualified Language.PureScript.CodeGen.JS.Common as JSC
+import           Data.Char (isAlphaNum, isLetter)
 import qualified Data.Text as T
 import qualified Data.Text.Lazy.Builder as TB
-import Data.Char (isLetter, isAlphaNum)
+import qualified Language.PureScript.CodeGen.JS.Common as JSC
+import qualified Language.PureScript.Names as PS
 
 -- $
 -- Behaviors of JSC.identToJs, JSC.properToJs, and JSC.anyNameToJs:

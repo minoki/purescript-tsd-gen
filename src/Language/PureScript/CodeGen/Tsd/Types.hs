@@ -7,15 +7,15 @@ module Language.PureScript.CodeGen.Tsd.Types
   , objectPropertyToString
   , showTSTypePrec
   ) where
-import Language.PureScript.Label
-import Language.PureScript.PSString
-import Language.PureScript.CodeGen.JS.Common
+import           Data.List (intersperse)
+import           Data.Monoid (mconcat, (<>))
 import qualified Data.Text.Lazy.Builder as TB
 import qualified Data.Text.Lazy.Builder.Int as TB
-import Data.Monoid ((<>), mconcat)
-import Data.List (intersperse)
-import Language.PureScript.TsdGen.Types
+import           Language.PureScript.CodeGen.JS.Common
 import qualified Language.PureScript.CodeGen.Tsd.Identifier as JS (identToBuilder)
+import           Language.PureScript.Label
+import           Language.PureScript.PSString
+import           Language.PureScript.TsdGen.Types
 
 intercalateTB :: TB.Builder -> [TB.Builder] -> TB.Builder
 intercalateTB sep xs = mconcat (intersperse sep xs)
@@ -24,7 +24,7 @@ showTSType :: TSType -> TB.Builder
 showTSType = showTSTypePrec 0
 
 showParenIf :: Bool -> TB.Builder -> TB.Builder
-showParenIf True s = "(" <> s <> ")"
+showParenIf True s  = "(" <> s <> ")"
 showParenIf False s = s
 
 showField :: Field -> TB.Builder
@@ -78,7 +78,7 @@ showTSTypePrec prec ty = case ty of
   TSNamed moduleid name tyArgs -> mid <> JS.identToBuilder name <> ta
     where mid = case moduleid of
                   Just m -> JS.identToBuilder m <> "."
-                  _ -> mempty
+                  _      -> mempty
           ta = case tyArgs of
                  [] -> mempty
                       -- the space after '<' is needed to avoid parse error with types like Array<<a>(_: a) => a>

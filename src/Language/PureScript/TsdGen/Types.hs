@@ -1,30 +1,31 @@
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 module Language.PureScript.TsdGen.Types where
-import Prelude hiding (elem,notElem,lookup)
-import Language.PureScript.Environment
-import Language.PureScript.Types
-import Language.PureScript.Label
-import Language.PureScript.PSString
-import Language.PureScript.Kinds
-import Language.PureScript.Names
-import Language.PureScript.Errors
-import Language.PureScript.TypeChecker.Kinds
-import Language.PureScript.TypeChecker.Monad
-import qualified Language.PureScript.Constants as C
-import qualified Data.Text as T
-import Data.Text (Text)
-import Control.Monad.State
-import Control.Monad.Except
-import qualified Data.Map as Map
-import Control.Monad.Reader
+import           Control.Monad.Except
+import           Control.Monad.Reader
+import           Control.Monad.State
 import qualified Data.List as List
-import Language.PureScript.TsdGen.Hardwired
-import qualified Language.PureScript.CodeGen.Tsd.Identifier as JS (Identifier, properToJs)
+import qualified Data.Map as Map
+import           Data.Text (Text)
+import qualified Data.Text as T
+import qualified Language.PureScript.CodeGen.Tsd.Identifier as JS (Identifier,
+                                                                   properToJs)
+import qualified Language.PureScript.Constants as C
+import           Language.PureScript.Environment
+import           Language.PureScript.Errors
+import           Language.PureScript.Kinds
+import           Language.PureScript.Label
+import           Language.PureScript.Names
+import           Language.PureScript.PSString
+import           Language.PureScript.TsdGen.Hardwired
+import           Language.PureScript.TypeChecker.Kinds
+import           Language.PureScript.TypeChecker.Monad
+import           Language.PureScript.Types
+import           Prelude hiding (elem, lookup, notElem)
 
-data Field = Field { fieldLabel :: !Label
-                   , fieldType :: !TSType
+data Field = Field { fieldLabel      :: !Label
+                   , fieldType       :: !TSType
                    , fieldIsOptional :: !Bool
                    -- Other options: readonly
                    }
@@ -133,11 +134,11 @@ pursTypeToTSType = go
       t' <- go t
       case s' of
         TSNamed m n a -> pure (TSNamed m n (a ++ [t']))
-        _ -> pure (TSUnknown $ T.pack $ show ty)
+        _             -> pure (TSUnknown $ T.pack $ show ty)
     go ty@(TypeConstructor _ (Qualified (Just (ModuleName [ProperName prim])) typeName)) | prim == C.prim = do
       case typeName of
         ProperName "Partial" -> pure (TSUnknown "Prim.Partial")
-        _ -> pure (TSUnknown $ T.pack $ show ty)
+        _                    -> pure (TSUnknown $ T.pack $ show ty)
     go ty@(TypeConstructor _ qName@(Qualified (Just moduleName) typeName)) = do
       ti <- asks (Map.lookup qName . types . ttcEnvironment)
       case ti of
@@ -167,20 +168,20 @@ pursTypeToTSType = go
 
 -- SimpleKind :: (Type -> )* Type
 isSimpleKind :: SourceKind -> Bool
-isSimpleKind k | k == kindType = True
+isSimpleKind k               | k == kindType = True
 isSimpleKind (FunKind _ s t) = s == kindType && isSimpleKind t
-isSimpleKind _ = False
+isSimpleKind _               = False
 
 numberOfTypeParams :: SourceKind -> Int
-numberOfTypeParams k | k == kindType = 0
+numberOfTypeParams k               | k == kindType = 0
 numberOfTypeParams (FunKind _ s t) | s == kindType = numberOfTypeParams t + 1
-numberOfTypeParams _ = 0 -- invalid
+numberOfTypeParams _               = 0 -- invalid
 
 -- LessSimpleKind :: (SimpleKind -> )* Type
 isLessSimpleKind :: SourceKind -> Bool
-isLessSimpleKind k | k == kindType = True
+isLessSimpleKind k               | k == kindType = True
 isLessSimpleKind (FunKind _ s t) = isSimpleKind s && isLessSimpleKind t
-isLessSimpleKind _ = False
+isLessSimpleKind _               = False
 
 extractTypes :: SourceKind -> [(a,Maybe SourceKind)] -> Maybe [a]
 extractTypes k [] | k == kindType = return []

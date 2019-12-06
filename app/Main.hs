@@ -1,28 +1,28 @@
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE RecordWildCards #-}
 module Main where
-import Prelude hiding (elem,notElem,lookup)
-import Data.Maybe
-import Data.Monoid ((<>))
+import           Control.Monad.Except
+import           Control.Monad.State
 import qualified Data.List as List
 import qualified Data.Map as Map
+import           Data.Maybe
+import           Data.Monoid ((<>))
 import qualified Data.Text as T
-import qualified Data.Text.Lazy.IO as TL
 import qualified Data.Text.Lazy.Builder as TB
-import Control.Monad.State
-import Control.Monad.Except
-import System.IO (hPutStr,stderr)
-import System.FilePath ((</>))
-import System.Directory (createDirectoryIfMissing,listDirectory,doesDirectoryExist)
-import Options.Applicative
+import qualified Data.Text.Lazy.IO as TL
+import           Data.Version (showVersion)
 import qualified Language.PureScript (version)
-import Language.PureScript.Externs
-import Language.PureScript.Environment
-import Language.PureScript.Names
-import Language.PureScript.TsdGen.Module
-import Data.Version (showVersion)
-import Paths_purescript_tsd_gen (version)
+import           Language.PureScript.Environment
+import           Language.PureScript.Externs
+import           Language.PureScript.Names
+import           Language.PureScript.TsdGen.Module
+import           Options.Applicative
+import           Paths_purescript_tsd_gen (version)
+import           Prelude hiding (elem, lookup, notElem)
+import           System.Directory (createDirectoryIfMissing, doesDirectoryExist,
+                                   listDirectory)
+import           System.FilePath ((</>))
+import           System.IO (hPutStr, stderr)
 
 processModules :: FilePath -> Maybe FilePath -> [String] -> Bool -> ExceptT ModuleProcessingError IO ()
 processModules inputDir mOutputDir modules importAll = do
@@ -43,9 +43,9 @@ processModules inputDir mOutputDir modules importAll = do
 data TsdOutput = TsdOutputDirectory FilePath | StdOutput | SameAsInput
 
 data PursTsdGen = PursTsdGen { pursOutputDirectory :: FilePath
-                             , tsdOutput :: TsdOutput
-                             , importAll :: Bool
-                             , moduleNames :: [String]
+                             , tsdOutput           :: TsdOutput
+                             , importAll           :: Bool
+                             , moduleNames         :: [String]
                              }
                 | ShowVersion
 
@@ -101,12 +101,12 @@ main = do
                                    in List.nub $ filter (\t -> any (flip testModuleGlob t) patterns) allModules ++ literals
       let tsdOutputDirectory = case tsdOutput of
             TsdOutputDirectory dir -> Just dir
-            StdOutput -> Nothing
-            SameAsInput -> Just pursOutputDirectory
+            StdOutput              -> Nothing
+            SameAsInput            -> Just pursOutputDirectory
       result <- runExceptT $ processModules pursOutputDirectory tsdOutputDirectory selectedModules importAll
       case result of
         Left err -> hPutStr stderr (show err) -- TODO: Better error handling
-        Right _ -> return ()
+        Right _  -> return ()
     ShowVersion -> do
       putStrLn $ "purs-tsd-gen " <> showVersion version
         <> " (works with purescript " <> showVersion Language.PureScript.version <> ")"

@@ -1,38 +1,39 @@
-{-# LANGUAGE RecordWildCards, NamedFieldPuns #-}
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE NamedFieldPuns #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RecordWildCards #-}
 module Language.PureScript.TsdGen.Module where
-import Prelude hiding (elem,notElem,lookup)
+import           Control.Monad.Except
+import           Control.Monad.Reader
+import           Control.Monad.RWS.Strict
+import           Control.Monad.State
+import           Control.Monad.Writer
+import qualified Data.Aeson as JSON
+import           Data.Bifunctor
+import qualified Data.ByteString.Lazy as BS
 import qualified Data.List as List
 import qualified Data.Map as Map
+import           Data.Maybe
+import           Data.Text (Text)
 import qualified Data.Text as T
-import Data.Text (Text)
 import qualified Data.Text.Lazy.Builder as TB
-import qualified Data.ByteString.Lazy as BS
-import qualified Data.Aeson as JSON
-import Data.Bifunctor
-import Data.Maybe
-import Control.Monad.State
-import Control.Monad.Except
-import Control.Monad.Reader
-import Control.Monad.Writer
-import Control.Monad.RWS.Strict
-import System.FilePath ((</>))
-import Language.PureScript.Externs
-import Language.PureScript.Environment
-import Language.PureScript.Types
-import Language.PureScript.Names
-import Language.PureScript.Label
-import Language.PureScript.Errors
-import Language.PureScript.PSString
-import Language.PureScript.Pretty.Kinds
-import qualified Language.PureScript.Constants as C
-import Language.PureScript.TsdGen.Types
-import Language.PureScript.TsdGen.Hardwired
+import           Data.Version (showVersion)
 import qualified Language.PureScript.CodeGen.Tsd.Identifier as JS
-import Language.PureScript.CodeGen.Tsd.Types
-import Data.Version (showVersion)
-import Paths_purescript_tsd_gen (version)
+import           Language.PureScript.CodeGen.Tsd.Types
+import qualified Language.PureScript.Constants as C
+import           Language.PureScript.Environment
+import           Language.PureScript.Errors
+import           Language.PureScript.Externs
+import           Language.PureScript.Label
+import           Language.PureScript.Names
+import           Language.PureScript.Pretty.Kinds
+import           Language.PureScript.PSString
+import           Language.PureScript.TsdGen.Hardwired
+import           Language.PureScript.TsdGen.Types
+import           Language.PureScript.Types
+import           Paths_purescript_tsd_gen (version)
+import           Prelude hiding (elem, lookup, notElem)
+import           System.FilePath ((</>))
 
 data ModuleProcessingError = FileReadError
                            | JSONDecodeError String FilePath
@@ -55,7 +56,7 @@ readExternsForModule dir moduleName = do
       externsPath = dir </> moduleNameText </> "externs.json"
   s <- liftIO $ BS.readFile externsPath
   case JSON.eitherDecode s of
-    Left err -> throwError (JSONDecodeError err externsPath)
+    Left err     -> throwError (JSONDecodeError err externsPath)
     Right result -> return result
 
 recursivelyLoadExterns :: FilePath -> ModuleName -> StateT (Environment, Map.Map ModuleName (Maybe ExternsFile)) (ExceptT ModuleProcessingError IO) ()
@@ -112,7 +113,7 @@ emitTypeDeclaration :: Maybe Text -> ExportName -> [Text] -> TSType -> ModuleWri
 emitTypeDeclaration comment ename tyParams ty = do
   let commentPart = case comment of
                  Just commentText -> "/*" <> TB.fromText commentText <> "*/ "
-                 Nothing -> mempty
+                 Nothing          -> mempty
   let tyParamsText | null tyParams = mempty
                    | otherwise = "<" <> TB.fromText (T.intercalate ", " tyParams) <> ">"
   case ename of
@@ -217,7 +218,7 @@ processLoadedModule env ef importAll = execWriterT $ do
     pursTypeToTSTypeX ctx ty = do
       e <- runExceptT $ runReaderT (pursTypeToTSType ty) (makeContext ctx)
       case e of
-        Left err -> throwError (PursTypeError currentModuleName err)
+        Left err   -> throwError (PursTypeError currentModuleName err)
         Right tsty -> return tsty
 
     processDecl :: ExternsDeclaration -> ModuleWriter ()
