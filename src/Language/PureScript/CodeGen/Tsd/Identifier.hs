@@ -5,6 +5,7 @@ module Language.PureScript.CodeGen.Tsd.Identifier
   , IncludeKeywords(..)
   , Ident
   , identToText
+  , identToBuilder
   , IdentifierName
   , Identifier
   , identToJs
@@ -16,6 +17,7 @@ module Language.PureScript.CodeGen.Tsd.Identifier
 import qualified Language.PureScript.Names as PS
 import qualified Language.PureScript.CodeGen.JS.Common as JSC
 import qualified Data.Text as T
+import qualified Data.Text.Lazy.Builder as TB
 import Data.Char (isLetter, isAlphaNum)
 
 -- $
@@ -57,6 +59,9 @@ newtype Ident (k :: IncludeKeywords) = Ident T.Text
 
 identToText :: Ident k -> T.Text
 identToText (Ident name) = name
+
+identToBuilder :: Ident k -> TB.Builder
+identToBuilder (Ident name) = TB.fromText name
 
 type IdentifierName = Ident 'IncludeKeywords
 type Identifier = Ident 'ExcludeKeywords

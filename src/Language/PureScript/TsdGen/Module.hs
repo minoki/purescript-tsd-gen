@@ -75,7 +75,7 @@ emitInterface :: JS.Identifier -> [Text] -> [Field] -> ModuleWriter ()
 emitInterface name tyParams fields = do
   let tyParamsText | null tyParams = mempty
                    | otherwise = "<" <> TB.fromText (T.intercalate ", " tyParams) <> ">"
-  tell $ "interface " <> TB.fromText (JS.identToText name) <> tyParamsText <> " {\n" <> TB.fromText (T.concat (map (\f -> "    " <> showField f <> ";\n") fields)) <> "}\n"
+  tell $ "interface " <> JS.identToBuilder name <> tyParamsText <> " {\n" <> TB.fromText (T.concat (map (\f -> "    " <> showField f <> ";\n") fields)) <> "}\n"
 
 emitTypeDeclaration :: Maybe Text -> JS.Identifier -> [Text] -> TSType -> ModuleWriter ()
 emitTypeDeclaration comment name tyParams ty = do
@@ -84,7 +84,7 @@ emitTypeDeclaration comment name tyParams ty = do
                  Nothing -> mempty
   let tyParamsText | null tyParams = mempty
                    | otherwise = "<" <> TB.fromText (T.intercalate ", " tyParams) <> ">"
-  tell $ "export type " <> commentPart <> TB.fromText (JS.identToText name) <> tyParamsText <> " = " <> TB.fromText (showTSType ty) <> ";\n"
+  tell $ "export type " <> commentPart <> JS.identToBuilder name <> tyParamsText <> " = " <> TB.fromText (showTSType ty) <> ";\n"
 
 data ValueExportName = NeedsRenaming { exportedName :: JS.IdentifierName, internalName :: JS.Identifier }
                      | NoRenaming JS.Identifier
@@ -101,12 +101,10 @@ psNameToJSValueExportName psName
 emitValueDeclaration :: Maybe Text -> ValueExportName -> TSType -> ModuleWriter ()
 emitValueDeclaration comment vname ty = case vname of
   NeedsRenaming { exportedName, internalName } -> do
-    let intName = TB.fromText (JS.identToText internalName)
-        extName = TB.fromText (JS.identToText exportedName)
-    tell $ "declare const " <> intName <> ": " <> TB.fromText (showTSType ty) <> ";\n\
-           \export " <> commentPart <> "{ " <> intName <> " as " <> extName <> " };\n"
+    tell $ "declare const " <> JS.identToBuilder internalName <> ": " <> TB.fromText (showTSType ty) <> ";\n\
+           \export " <> commentPart <> "{ " <> JS.identToBuilder internalName <> " as " <> JS.identToBuilder exportedName <> " };\n"
   NoRenaming name -> do
-    tell $ "export const " <> commentPart <> TB.fromText (JS.identToText name) <> ": " <> TB.fromText (showTSType ty) <> ";\n"
+    tell $ "export const " <> commentPart <> JS.identToBuilder name <> ": " <> TB.fromText (showTSType ty) <> ";\n"
   NotExpressibleInJSModule name -> do
     -- As of PureScript 0.13.5, the compiler emits symbols that contain prime symbol `'`;
     -- Such identifiers cannot be used in ES6 modules.
@@ -119,7 +117,7 @@ emitValueDeclaration comment vname ty = case vname of
                         Nothing -> mempty
 
 emitNamespaceImport :: Monad m => JS.Identifier -> ModuleName -> WriterT TB.Builder m ()
-emitNamespaceImport ident moduleName = tell $ "import * as " <> TB.fromText (JS.identToText ident) <> " from \"../" <> TB.fromText (runModuleName moduleName) <> "\";\n"
+emitNamespaceImport ident moduleName = tell $ "import * as " <> JS.identToBuilder ident <> " from \"../" <> TB.fromText (runModuleName moduleName) <> "\";\n"
 
 emitImport :: Monad m => ModuleName -> WriterT TB.Builder m ()
 emitImport moduleName = tell $ "import \"../" <> TB.fromText (runModuleName moduleName) <> "\";\n"
