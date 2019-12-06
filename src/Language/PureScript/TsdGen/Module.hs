@@ -88,12 +88,12 @@ emitTypeDeclaration comment name tyParams ty = do
 
 data ValueExportName = NeedsRenaming { exportedName :: JS.IdentifierName, internalName :: JS.Identifier }
                      | NoRenaming JS.Identifier
-                     | NotExpressibleInJSModule Text
+                     | NotExpressibleInJSModule { nonExportableName :: Text, internalName :: JS.Identifier }
 
 psNameToJSValueExportName :: Text -> ValueExportName
 psNameToJSValueExportName psName
   = case JS.ensureIdentifierName psName of
-      Nothing -> NotExpressibleInJSModule psName -- may contain a prime symbol
+      Nothing -> NotExpressibleInJSModule { nonExportableName = psName, internalName = JS.anyNameToJs psName } -- may contain a prime symbol
       Just identifierName -> case JS.ensureNonKeyword identifierName of
                                Nothing -> NeedsRenaming { exportedName = identifierName, internalName = JS.anyNameToJs psName }
                                Just identifier -> NoRenaming identifier
@@ -105,13 +105,14 @@ emitValueDeclaration comment vname ty = case vname of
            \export " <> commentPart <> "{ " <> JS.identToBuilder internalName <> " as " <> JS.identToBuilder exportedName <> " };\n"
   NoRenaming name -> do
     tell $ "export const " <> commentPart <> JS.identToBuilder name <> ": " <> TB.fromText (showTSType ty) <> ";\n"
-  NotExpressibleInJSModule name -> do
+  NotExpressibleInJSModule { nonExportableName, internalName } -> do
     -- As of PureScript 0.13.5, the compiler emits symbols that contain prime symbol `'`;
     -- Such identifiers cannot be used in ES6 modules.
     -- See: https://github.com/purescript/purescript/issues/2558
     --      https://github.com/purescript/purescript/issues/3613
-    tell $ "// The identifier \"" <> TB.fromText name <> "\" cannot be expressed in JavaScript:\n\
-           \// export const " <> commentPart <> TB.fromText name <> ": " <> TB.fromText (showTSType ty) <> ";\n"
+    tell $ "declare const " <> JS.identToBuilder internalName <> ": " <> TB.fromText (showTSType ty) <> ";\n\
+           \// The identifier \"" <> TB.fromText nonExportableName <> "\" cannot be expressed in JavaScript:\n\
+           \// export " <> commentPart <> "{ " <> JS.identToBuilder internalName <> " as " <> TB.fromText nonExportableName <> " };\n"
   where commentPart = case comment of
                         Just commentText -> "/*" <> TB.fromText commentText <> "*/ "
                         Nothing -> mempty
