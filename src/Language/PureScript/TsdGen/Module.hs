@@ -217,7 +217,7 @@ processLoadedModule env ef importAll = execWriterT $ do
                          -- so just reference it.
                            | qualCurrentModule ctorPName `Map.member` dataConstructors env
                            = let fv = typeParameters `List.intersect` concatMap freeTypeVariables members
-                             in TSNamed Nothing (JS.identToText (JS.properToJs name) <> "$$" <> JS.identToText (JS.properToJs ctorPName)) (map TSTyVar fv)
+                             in TSNamed Nothing (JS.appendWithDoubleDollars (JS.properToJs name) (JS.properToJs ctorPName)) (map TSTyVar fv)
 
                          -- the data constructor is not exportd (i.e. abstract):
                          -- the marker fields are non-optional, so that they cannot be implicitly casted from other types.
@@ -277,7 +277,7 @@ processLoadedModule env ef importAll = execWriterT $ do
                   -- Data constructor for a 'data' declaration:
                   -- Emit an interface so that type refinement via 'instanceof' works.
                   let fieldTypeVars = map fst typeParameters `List.intersect` concatMap freeTypeVariables fieldTypes
-                      dataCtorSubtypeName = JS.identToText (JS.properToJs edDataCtorTypeCtor) <> "$$" <> JS.identToText (JS.properToJs name)
+                      dataCtorSubtypeName = JS.appendWithDoubleDollars (JS.properToJs edDataCtorTypeCtor) (JS.properToJs name)
                       dataCtorSubtype = TSNamed Nothing dataCtorSubtypeName (map TSTyVar fieldTypeVars)
                   fieldTypesTS <- mapM (pursTypeToTSTypeX fieldTypeVars) fieldTypes
                   let mkMarkerField | length constructors == 1 = mkOptionalField -- allow structural subtyping if there are only one constructor
@@ -286,9 +286,7 @@ processLoadedModule env ef importAll = execWriterT $ do
                                     , mkMarkerField "$$pursTag" (TSStringLit (mkString $ runProperName edDataCtorName))
                                     ]
                       dataFields = zipWith (\f ty -> mkField (Label $ mkString $ runIdent f) ty) edDataCtorFields fieldTypesTS
-                      Just subtypeName = JS.ensureIdentifierName dataCtorSubtypeName
-                      Just subtypeIdent = JS.ensureNonKeyword subtypeName
-                  emitInterface subtypeIdent fieldTypeVars (makerFields <> dataFields)
+                  emitInterface dataCtorSubtypeName fieldTypeVars (makerFields <> dataFields)
 
                   -- The constructor function has a 'new' signature returning that interface.
                   let ctorFieldName | null edDataCtorFields = "value"

@@ -13,7 +13,6 @@ import Language.PureScript.Errors
 import Language.PureScript.TypeChecker.Kinds
 import Language.PureScript.TypeChecker.Monad
 import qualified Language.PureScript.Constants as C
-import Language.PureScript.CodeGen.JS.Common
 import qualified Data.Text as T
 import Data.Text (Text)
 import Control.Monad.State
@@ -22,7 +21,7 @@ import qualified Data.Map as Map
 import Control.Monad.Reader
 import qualified Data.List as List
 import Language.PureScript.TsdGen.Hardwired
-import qualified Language.PureScript.CodeGen.Tsd.Identifier as JS (Identifier)
+import qualified Language.PureScript.CodeGen.Tsd.Identifier as JS (Identifier, properToJs)
 
 data Field = Field { fieldLabel :: !Label
                    , fieldType :: !TSType
@@ -51,7 +50,7 @@ data TSType = TSAny
             | TSRecord [Field]
             | TSStrMap TSType -- Data.StrMap.StrMap <=> {[_: string]: T}
             | TSTyVar Text
-            | TSNamed {- module id -} (Maybe JS.Identifier) {- name -} Text {- arguments -} [TSType]
+            | TSNamed {- module id -} (Maybe JS.Identifier) {- name -} JS.Identifier {- arguments -} [TSType]
             | TSStringLit PSString
             | TSUnion [TSType] -- empty = never
             | TSIntersection [TSType] -- empty = {} (all)
@@ -145,7 +144,7 @@ pursTypeToTSType = go
         Just (k, _) | isSimpleKind k -> do
           getModuleId <- asks ttcGetModuleId
           moduleId <- lift (lift (getModuleId moduleName))
-          pure (TSNamed moduleId (properToJs typeName) [])
+          pure (TSNamed moduleId (JS.properToJs typeName) [])
         _ -> pure (TSUnknown $ T.pack $ show ty)
     go (ConstrainedType _ ct inner) = tsFunction go [constraintToType ct] inner
     go ty = pure (TSUnknown $ T.pack $ show ty)

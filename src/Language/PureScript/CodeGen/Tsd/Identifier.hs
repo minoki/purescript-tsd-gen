@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE DataKinds #-}
 module Language.PureScript.CodeGen.Tsd.Identifier
@@ -13,6 +14,7 @@ module Language.PureScript.CodeGen.Tsd.Identifier
   , anyNameToJs
   , ensureNonKeyword
   , ensureIdentifierName
+  , appendWithDoubleDollars
   ) where
 import qualified Language.PureScript.Names as PS
 import qualified Language.PureScript.CodeGen.JS.Common as JSC
@@ -94,3 +96,6 @@ ensureNonKeyword (Ident name) | JSC.nameIsJsReserved name = Nothing
 ensureIdentifierName :: T.Text -> Maybe (Ident 'IncludeKeywords)
 ensureIdentifierName name | isIdentifierName name = Just (Ident name)
                           | otherwise = Nothing
+
+appendWithDoubleDollars :: Identifier -> Identifier -> Identifier
+appendWithDoubleDollars (Ident name1) (Ident name2) = Ident (name1 <> "$$" <> name2)

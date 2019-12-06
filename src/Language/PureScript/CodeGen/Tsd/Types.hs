@@ -75,7 +75,7 @@ showTSTypePrec prec ty = case ty of
   TSIntersection [] -> "{}" -- universal type.  TODO: use 'unknown' type?
   TSIntersection members -> intercalateTB " & " (map (showTSTypePrec 2) members)
   TSTyVar name -> TB.fromText (anyNameToJs name)
-  TSNamed moduleid name tyArgs -> mid <> TB.fromText name <> ta
+  TSNamed moduleid name tyArgs -> mid <> JS.identToBuilder name <> ta
     where mid = case moduleid of
                   Just m -> JS.identToBuilder m <> "."
                   _ -> mempty
