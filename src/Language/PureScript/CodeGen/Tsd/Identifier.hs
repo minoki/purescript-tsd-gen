@@ -3,17 +3,17 @@
 module Language.PureScript.CodeGen.Tsd.Identifier
   ( isIdentifierName
   , IncludeKeywords(..)
-  , JSIdent
-  , jsIdentToText
-  , JSIdentifierName
-  , JSIdentifier
+  , Ident
+  , identToText
+  , IdentifierName
+  , Identifier
   , identToJs
   , properToJs
   , anyNameToJs
   , ensureNonKeyword
   , ensureIdentifierName
   ) where
-import Language.PureScript.Names
+import qualified Language.PureScript.Names as PS
 import qualified Language.PureScript.CodeGen.JS.Common as JSC
 import qualified Data.Text as T
 import Data.Char (isLetter, isAlphaNum)
@@ -52,32 +52,32 @@ isIdentifierName name = case T.uncons name of
 data IncludeKeywords = IncludeKeywords
                      | ExcludeKeywords
 
-newtype JSIdent (k :: IncludeKeywords) = JSIdent T.Text
+newtype Ident (k :: IncludeKeywords) = Ident T.Text
   deriving (Eq,Show)
 
-jsIdentToText :: JSIdent k -> T.Text
-jsIdentToText (JSIdent name) = name
+identToText :: Ident k -> T.Text
+identToText (Ident name) = name
 
-type JSIdentifierName = JSIdent 'IncludeKeywords
-type JSIdentifier = JSIdent 'ExcludeKeywords
+type IdentifierName = Ident 'IncludeKeywords
+type Identifier = Ident 'ExcludeKeywords
 
-identToJs :: Ident -> JSIdent 'ExcludeKeywords
-identToJs = JSIdent . JSC.identToJs
+identToJs :: PS.Ident -> Ident 'ExcludeKeywords
+identToJs = Ident . JSC.identToJs
 
-properToJs :: ProperName a -> JSIdent 'ExcludeKeywords
-properToJs = JSIdent . JSC.properToJs
+properToJs :: PS.ProperName a -> Ident 'ExcludeKeywords
+properToJs = Ident . JSC.properToJs
 
-anyNameToJs :: T.Text -> JSIdent 'ExcludeKeywords
-anyNameToJs = JSIdent . JSC.anyNameToJs
+anyNameToJs :: T.Text -> Ident 'ExcludeKeywords
+anyNameToJs = Ident . JSC.anyNameToJs
 
 -- |
 -- >>> ensureNonKeyword (JSIdent "foo")
 -- Just (JSIdent "foo")
 -- >>> ensureNonKeyword (JSIdent "for")
 -- Nothing
-ensureNonKeyword :: JSIdent 'IncludeKeywords -> Maybe (JSIdent 'ExcludeKeywords)
-ensureNonKeyword (JSIdent name) | JSC.nameIsJsReserved name = Nothing
-                                | otherwise = Just (JSIdent name)
+ensureNonKeyword :: Ident 'IncludeKeywords -> Maybe (Ident 'ExcludeKeywords)
+ensureNonKeyword (Ident name) | JSC.nameIsJsReserved name = Nothing
+                              | otherwise = Just (Ident name)
 
 -- |
 -- >>> ensureIdentifierName "foo"
@@ -86,6 +86,6 @@ ensureNonKeyword (JSIdent name) | JSC.nameIsJsReserved name = Nothing
 -- Just (JSIdent "for")
 -- >>> ensureIdentifierName "foo'"
 -- Nothing
-ensureIdentifierName :: T.Text -> Maybe (JSIdent 'IncludeKeywords)
-ensureIdentifierName name | isIdentifierName name = Just (JSIdent name)
+ensureIdentifierName :: T.Text -> Maybe (Ident 'IncludeKeywords)
+ensureIdentifierName name | isIdentifierName name = Just (Ident name)
                           | otherwise = Nothing

@@ -23,7 +23,7 @@ import Control.Monad.Reader
 import Data.Monoid ((<>))
 import qualified Data.List as List
 import Language.PureScript.TsdGen.Hardwired
-import Language.PureScript.CodeGen.Tsd.Identifier (JSIdentifier, jsIdentToText)
+import qualified Language.PureScript.CodeGen.Tsd.Identifier as JS (Identifier, identToText)
 
 data Field = Field { fieldLabel :: !Label
                    , fieldType :: !TSType
@@ -52,7 +52,7 @@ data TSType = TSAny
             | TSRecord [Field]
             | TSStrMap TSType -- Data.StrMap.StrMap <=> {[_: string]: T}
             | TSTyVar Text
-            | TSNamed {- module id -} (Maybe JSIdentifier) {- name -} Text {- arguments -} [TSType]
+            | TSNamed {- module id -} (Maybe JS.Identifier) {- name -} Text {- arguments -} [TSType]
             | TSStringLit PSString
             | TSUnion [TSType] -- empty = never
             | TSIntersection [TSType] -- empty = {} (all)
@@ -67,7 +67,7 @@ constraintToType ct = foldl (TypeApp nullSourceAnn) (TypeConstructor nullSourceA
 data TypeTranslationContext f = TypeTranslationContext { ttcBoundTyVars :: [Text]
                                                        , ttcUnboundTyVars :: [Text]
                                                        , ttcScopedVarKinds :: Maybe [(Text,SourceKind)]
-                                                       , ttcGetModuleId :: ModuleName -> f (Maybe JSIdentifier)
+                                                       , ttcGetModuleId :: ModuleName -> f (Maybe JS.Identifier)
                                                        , ttcEnvironment :: Environment
                                                        , ttcCurrentModuleName :: ModuleName
                                                        }
@@ -223,7 +223,7 @@ showTSTypePrec prec ty = case ty of
   TSIntersection members -> T.intercalate " & " (map (showTSTypePrec 2) members)
   TSTyVar name -> anyNameToJs name
   TSNamed moduleid name tyArgs -> mid <> name <> ta
-    where mid | Just m <- moduleid = jsIdentToText m <> "."
+    where mid | Just m <- moduleid = JS.identToText m <> "."
               | otherwise = ""
           ta | [] <- tyArgs = ""
                -- the space after '<' is needed to avoid parse error with types like Array<<a>(_: a) => a>
