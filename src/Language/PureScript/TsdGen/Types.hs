@@ -9,8 +9,7 @@ import qualified Data.List as List
 import qualified Data.Map as Map
 import           Data.Text (Text)
 import qualified Data.Text as T
-import qualified Language.PureScript.CodeGen.Tsd.Identifier as JS (Identifier,
-                                                                   properToJs)
+import qualified Language.PureScript.CodeGen.Tsd.Identifier as JS
 import qualified Language.PureScript.Constants as C
 import           Language.PureScript.Environment
 import           Language.PureScript.Errors
@@ -38,6 +37,10 @@ mkField label ty = Field label ty False
 mkOptionalField :: Label -> TSType -> Field
 mkOptionalField label ty = Field label ty True
 
+data TSTypeName = QualifiedTypeName {- module id -} JS.Identifier {- name -} JS.IdentifierName
+                | UnqualifiedTypeName {- name -} JS.Identifier
+                deriving (Eq,Show)
+
 -- TypeScript types
 data TSType = TSAny
             | TSUndefined
@@ -51,7 +54,7 @@ data TSType = TSAny
             | TSRecord [Field]
             | TSStrMap TSType -- Data.StrMap.StrMap <=> {[_: string]: T}
             | TSTyVar Text
-            | TSNamed {- module id -} (Maybe JS.Identifier) {- name -} JS.Identifier {- arguments -} [TSType]
+            | TSNamed {- type name -} TSTypeName {- arguments -} [TSType]
             | TSStringLit PSString
             | TSUnion [TSType] -- empty = never
             | TSIntersection [TSType] -- empty = {} (all)
@@ -133,8 +136,8 @@ pursTypeToTSType = go
       s' <- go s
       t' <- go t
       case s' of
-        TSNamed m n a -> pure (TSNamed m n (a ++ [t']))
-        _             -> pure (TSUnknown $ T.pack $ show ty)
+        TSNamed n a -> pure (TSNamed n (a ++ [t']))
+        _           -> pure (TSUnknown $ T.pack $ show ty)
     go ty@(TypeConstructor _ (Qualified (Just (ModuleName [ProperName prim])) typeName)) | prim == C.prim = do
       case typeName of
         ProperName "Partial" -> pure (TSUnknown "Prim.Partial")
@@ -145,7 +148,13 @@ pursTypeToTSType = go
         Just (k, _) | isSimpleKind k -> do
           getModuleId <- asks ttcGetModuleId
           moduleId <- lift (lift (getModuleId moduleName))
-          pure (TSNamed moduleId (JS.properToJs typeName) [])
+          let tsTypeName = case moduleId of
+                             Nothing -> UnqualifiedTypeName $ JS.properToJs typeName
+                             Just moduleId' -> QualifiedTypeName moduleId' $
+                               case JS.ensureIdentifierName (runProperName typeName) of
+                                 Just identifierName -> identifierName
+                                 Nothing -> JS.toIdentifierName $ JS.properToJs typeName -- may contain prime in the type name
+          pure $ TSNamed tsTypeName []
         _ -> pure (TSUnknown $ T.pack $ show ty)
     go (ConstrainedType _ ct inner) = tsFunction go [constraintToType ct] inner
     go ty = pure (TSUnknown $ T.pack $ show ty)

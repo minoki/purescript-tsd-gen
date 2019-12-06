@@ -53,6 +53,10 @@ objectPropertyToString ps = case decodeString ps of
                               Just t | isValidJsIdentifier t -> TB.fromText t
                               _ -> TB.fromText (prettyPrintStringJS ps)
 
+showTypeName :: TSTypeName -> TB.Builder
+showTypeName (QualifiedTypeName moduleId name) = JS.identToBuilder moduleId <> "." <> JS.identToBuilder name
+showTypeName (UnqualifiedTypeName name) = JS.identToBuilder name
+
 showTSTypePrec :: Int -> TSType -> TB.Builder
 showTSTypePrec prec ty = case ty of
   TSAny -> "any"
@@ -75,11 +79,8 @@ showTSTypePrec prec ty = case ty of
   TSIntersection [] -> "{}" -- universal type.  TODO: use 'unknown' type?
   TSIntersection members -> intercalateTB " & " (map (showTSTypePrec 2) members)
   TSTyVar name -> TB.fromText (anyNameToJs name)
-  TSNamed moduleid name tyArgs -> mid <> JS.identToBuilder name <> ta
-    where mid = case moduleid of
-                  Just m -> JS.identToBuilder m <> "."
-                  _      -> mempty
-          ta = case tyArgs of
+  TSNamed name tyArgs -> showTypeName name <> ta
+    where ta = case tyArgs of
                  [] -> mempty
                       -- the space after '<' is needed to avoid parse error with types like Array<<a>(_: a) => a>
                  _ -> "< " <> intercalateTB ", " (map showTSType tyArgs) <> " >"

@@ -15,6 +15,7 @@ module Language.PureScript.CodeGen.Tsd.Identifier
   , ensureNonKeyword
   , ensureIdentifierName
   , appendWithDoubleDollars
+  , toIdentifierName
   ) where
 import           Data.Char (isAlphaNum, isLetter)
 import qualified Data.Text as T
@@ -99,3 +100,6 @@ ensureIdentifierName name | isIdentifierName name = Just (Ident name)
 
 appendWithDoubleDollars :: Identifier -> Identifier -> Identifier
 appendWithDoubleDollars (Ident name1) (Ident name2) = Ident (name1 <> "$$" <> name2)
+
+toIdentifierName :: Ident k -> Ident 'IncludeKeywords
+toIdentifierName (Ident name) = Ident name

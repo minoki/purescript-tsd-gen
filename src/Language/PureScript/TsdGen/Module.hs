@@ -247,7 +247,7 @@ processLoadedModule env ef importAll = execWriterT $ do
                          -- so just reference it.
                            | qualCurrentModule ctorPName `Map.member` dataConstructors env
                            = let fv = typeParameters `List.intersect` concatMap freeTypeVariables members
-                             in TSNamed Nothing (JS.appendWithDoubleDollars (JS.properToJs name) (JS.properToJs ctorPName)) (map TSTyVar fv)
+                             in TSNamed (UnqualifiedTypeName $ JS.appendWithDoubleDollars (JS.properToJs name) (JS.properToJs ctorPName)) (map TSTyVar fv)
 
                          -- the data constructor is not exportd (i.e. abstract):
                          -- the marker fields are non-optional, so that they cannot be implicitly casted from other types.
@@ -308,7 +308,7 @@ processLoadedModule env ef importAll = execWriterT $ do
                   -- Emit an interface so that type refinement via 'instanceof' works.
                   let fieldTypeVars = map fst typeParameters `List.intersect` concatMap freeTypeVariables fieldTypes
                       dataCtorSubtypeName = JS.appendWithDoubleDollars (JS.properToJs edDataCtorTypeCtor) (JS.properToJs name)
-                      dataCtorSubtype = TSNamed Nothing dataCtorSubtypeName (map TSTyVar fieldTypeVars)
+                      dataCtorSubtype = TSNamed (UnqualifiedTypeName dataCtorSubtypeName) (map TSTyVar fieldTypeVars)
                   fieldTypesTS <- mapM (pursTypeToTSTypeX fieldTypeVars) fieldTypes
                   let mkMarkerField | length constructors == 1 = mkOptionalField -- allow structural subtyping if there are only one constructor
                                     | otherwise = mkField -- nominal typing
