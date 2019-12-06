@@ -84,15 +84,16 @@ data ExportName = NeedsRenaming { exportedName :: JS.IdentifierName, internalNam
 
 psNameToJSExportName :: Text -> ExportName
 psNameToJSExportName psName
-  = case JS.ensureIdentifierName psName of
-      Nothing -> NotExpressibleInJSModule { nonExportableName = psName -- may contain a prime symbol
-                                          , internalName = JS.anyNameToJs psName
-                                          }
-      Just identifierName -> case JS.ensureNonKeyword identifierName of
-                               Nothing -> NeedsRenaming { exportedName = identifierName
-                                                        , internalName = JS.anyNameToJs psName
-                                                        }
-                               Just identifier -> NoRenaming identifier
+  = let internalName = JS.anyNameToJs psName
+    in case JS.ensureIdentifierName psName of
+         Nothing -> NotExpressibleInJSModule { nonExportableName = psName -- may contain a prime symbol
+                                             , internalName
+                                             }
+         Just identifierName
+           | JS.identToText internalName == JS.identToText identifierName -> NoRenaming internalName
+           | otherwise -> NeedsRenaming { exportedName = identifierName
+                                        , internalName
+                                        }
 
 emitTypeDeclaration :: Maybe Text -> ExportName -> [Text] -> TSType -> ModuleWriter ()
 emitTypeDeclaration comment ename tyParams ty = do
