@@ -2,15 +2,16 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
-module Language.PureScript.TsdGen.Module where
+module Language.PureScript.TsdGen.Module
+  ( module Language.PureScript.TsdGen.Module
+  , module Language.PureScript.TsdGen.Module.ReadExterns
+  ) where
 import           Control.Monad.Except
 import           Control.Monad.Reader
 import           Control.Monad.RWS.Strict
 import           Control.Monad.State
 import           Control.Monad.Writer
-import qualified Data.Aeson as JSON
 import           Data.Bifunctor
-import qualified Data.ByteString.Lazy as BS
 import qualified Data.List as List
 import qualified Data.Map as Map
 import           Data.Maybe
@@ -29,16 +30,12 @@ import           Language.PureScript.Names
 import           Language.PureScript.Pretty.Kinds
 import           Language.PureScript.PSString
 import           Language.PureScript.TsdGen.Hardwired
+import           Language.PureScript.TsdGen.Module.ReadExterns (ModuleProcessingError (..),
+                                                                readExternsForModule)
 import           Language.PureScript.TsdGen.Types
 import           Language.PureScript.Types
 import           Paths_purescript_tsd_gen (version)
 import           Prelude hiding (elem, lookup, notElem)
-import           System.FilePath ((</>))
-
-data ModuleProcessingError = FileReadError
-                           | JSONDecodeError String FilePath
-                           | PursTypeError ModuleName MultipleErrors
-                           deriving (Show)
 
 newtype ModuleImport = ModuleImport { moduleImportIdent :: Maybe JS.Identifier
                                     }
@@ -50,18 +47,9 @@ type RenamedExportMap = Map.Map {- external name -} JS.IdentifierName
 
 type ModuleWriter = RWST () TB.Builder (ModuleImportMap, RenamedExportMap) (ExceptT ModuleProcessingError IO)
 
-readExternsForModule :: FilePath -> ModuleName -> ExceptT ModuleProcessingError IO ExternsFile
-readExternsForModule dir moduleName = do
-  let moduleNameText = T.unpack (runModuleName moduleName)
-      externsPath = dir </> moduleNameText </> "externs.json"
-  s <- liftIO $ BS.readFile externsPath
-  case JSON.eitherDecode s of
-    Left err     -> throwError (JSONDecodeError err externsPath)
-    Right result -> return result
-
 recursivelyLoadExterns :: FilePath -> ModuleName -> StateT (Environment, Map.Map ModuleName (Maybe ExternsFile)) (ExceptT ModuleProcessingError IO) ()
 recursivelyLoadExterns dir moduleName
-  | moduleName == ModuleName [ProperName C.prim] = return () -- ~v0.11.7
+  | moduleName == C.Prim = return () -- ~v0.11.7
   | moduleName `List.elem` C.primModules = return () -- v0.12.0~
   | otherwise = do
   ef <- lift (readExternsForModule dir moduleName)
@@ -166,7 +154,7 @@ processLoadedModule env ef importAll = execWriterT $ do
       \moduleName ->
         case Map.lookup moduleName moduleImportMap of
           Just (ModuleImport { moduleImportIdent = Just ident }) -> emitNamespaceImport ident moduleName
-          Nothing | moduleName /= ModuleName [ProperName C.prim] ->
+          Nothing | moduleName /= C.Prim ->
             emitImport moduleName
           _ -> return ()
     else
@@ -200,12 +188,12 @@ processLoadedModule env ef importAll = execWriterT $ do
 
     -- Get the JS identifier for given module
     getModuleId :: ModuleName -> ModuleWriter (Maybe JS.Identifier)
-    getModuleId (ModuleName [ProperName prim]) | prim == C.prim = return Nothing -- should not occur
-    getModuleId moduleName@(ModuleName components) = do
+    getModuleId C.Prim = return Nothing -- should not occur
+    getModuleId moduleName = do
       mid <- gets (Map.lookup moduleName . fst)
       case mid of
         Nothing -> do -- not found
-          let moduleId = Just $ JS.anyNameToJs $ T.intercalate "_" (runProperName <$> components)
+          let moduleId = Just $ JS.anyNameToJs $ T.replace "." "_" (runModuleName moduleName)
           -- TODO: Make sure moduleId is unique
           modify (first $ Map.insert moduleName (ModuleImport { moduleImportIdent = moduleId }))
           return moduleId

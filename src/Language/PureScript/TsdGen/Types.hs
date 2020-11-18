@@ -138,7 +138,7 @@ pursTypeToTSType = go
       case s' of
         TSNamed n a -> pure (TSNamed n (a ++ [t']))
         _           -> pure (TSUnknown $ T.pack $ show ty)
-    go ty@(TypeConstructor _ (Qualified (Just (ModuleName [ProperName prim])) typeName)) | prim == C.prim = do
+    go ty@(TypeConstructor _ (Qualified (Just C.Prim) typeName)) = do
       case typeName of
         ProperName "Partial" -> pure (TSUnknown "Prim.Partial")
         _                    -> pure (TSUnknown $ T.pack $ show ty)
