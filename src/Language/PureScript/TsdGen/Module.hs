@@ -2,7 +2,10 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
-module Language.PureScript.TsdGen.Module where
+module Language.PureScript.TsdGen.Module
+  ( module Language.PureScript.TsdGen.Module
+  , module Language.PureScript.TsdGen.Module.ReadExterns
+  ) where
 import           Control.Monad.Except
 import           Control.Monad.Reader
 import           Control.Monad.RWS.Strict
@@ -23,21 +26,16 @@ import           Language.PureScript.Environment
 import           Language.PureScript.Errors
 import           Language.PureScript.Externs
 import           Language.PureScript.Label
-import qualified Language.PureScript.Make.Monad as Make
 import           Language.PureScript.Names
 import           Language.PureScript.Pretty.Kinds
 import           Language.PureScript.PSString
 import           Language.PureScript.TsdGen.Hardwired
+import           Language.PureScript.TsdGen.Module.ReadExterns (ModuleProcessingError (..),
+                                                                readExternsForModule)
 import           Language.PureScript.TsdGen.Types
 import           Language.PureScript.Types
 import           Paths_purescript_tsd_gen (version)
 import           Prelude hiding (elem, lookup, notElem)
-import           System.FilePath ((</>))
-
-data ModuleProcessingError = FileReadError
-                           | CBORDecodeError FilePath
-                           | PursTypeError ModuleName MultipleErrors
-                           deriving (Show)
 
 newtype ModuleImport = ModuleImport { moduleImportIdent :: Maybe JS.Identifier
                                     }
@@ -48,15 +46,6 @@ type RenamedExportMap = Map.Map {- external name -} JS.IdentifierName
                                ({- internal name: manged by anyNameToJs -} JS.Identifier, {- comments -} [T.Text])
 
 type ModuleWriter = RWST () TB.Builder (ModuleImportMap, RenamedExportMap) (ExceptT ModuleProcessingError IO)
-
-readExternsForModule :: FilePath -> ModuleName -> ExceptT ModuleProcessingError IO ExternsFile
-readExternsForModule dir moduleName = do
-  let moduleNameText = T.unpack (runModuleName moduleName)
-      externsPath = dir </> moduleNameText </> "externs.cbor"
-  s <- liftIO $ Make.readCborFileIO externsPath
-  case s of
-    Nothing      -> throwError (CBORDecodeError externsPath)
-    Just externs -> return externs
 
 recursivelyLoadExterns :: FilePath -> ModuleName -> StateT (Environment, Map.Map ModuleName (Maybe ExternsFile)) (ExceptT ModuleProcessingError IO) ()
 recursivelyLoadExterns dir moduleName
@@ -200,11 +189,11 @@ processLoadedModule env ef importAll = execWriterT $ do
     -- Get the JS identifier for given module
     getModuleId :: ModuleName -> ModuleWriter (Maybe JS.Identifier)
     getModuleId C.Prim = return Nothing -- should not occur
-    getModuleId moduleName@(ModuleName components) = do
+    getModuleId moduleName = do
       mid <- gets (Map.lookup moduleName . fst)
       case mid of
         Nothing -> do -- not found
-          let moduleId = Just $ JS.anyNameToJs $ T.replace "." "_" components
+          let moduleId = Just $ JS.anyNameToJs $ T.replace "." "_" (runModuleName moduleName)
           -- TODO: Make sure moduleId is unique
           modify (first $ Map.insert moduleName (ModuleImport { moduleImportIdent = moduleId }))
           return moduleId

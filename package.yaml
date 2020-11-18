@@ -36,6 +36,7 @@ library:
   source-dirs: src
   other-modules:
   - Language.PureScript.TsdGen.Hardwired
+  - Language.PureScript.TsdGen.Module.ReadExterns
   - Paths_purescript_tsd_gen
 
 executables:
