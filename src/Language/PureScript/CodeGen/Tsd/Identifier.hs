@@ -25,15 +25,15 @@ import qualified Language.PureScript.Names as PS
 
 -- $
 -- Behaviors of JSC.identToJs, JSC.properToJs, and JSC.anyNameToJs:
--- >>> JSC.identToJs (Ident "foo")
+-- >>> JSC.identToJs (PS.Ident "foo")
 -- "foo"
--- >>> JSC.identToJs (Ident "foo'")
+-- >>> JSC.identToJs (PS.Ident "foo'")
 -- "foo$prime"
--- >>> JSC.identToJs (Ident "for")
+-- >>> JSC.identToJs (PS.Ident "for")
 -- "$$for"
--- >>> JSC.properToJs (ProperName "Foo")
+-- >>> JSC.properToJs (PS.ProperName "Foo")
 -- "Foo"
--- >>> JSC.properToJs (ProperName "Foo'")
+-- >>> JSC.properToJs (PS.ProperName "Foo'")
 -- "Foo$prime"
 -- >>> JSC.anyNameToJs "foo"
 -- "foo"
@@ -79,9 +79,9 @@ anyNameToJs :: T.Text -> Ident 'ExcludeKeywords
 anyNameToJs = Ident . JSC.anyNameToJs
 
 -- |
--- >>> ensureNonKeyword (JSIdent "foo")
--- Just (JSIdent "foo")
--- >>> ensureNonKeyword (JSIdent "for")
+-- >>> ensureNonKeyword (Ident "foo")
+-- Just (Ident "foo")
+-- >>> ensureNonKeyword (Ident "for")
 -- Nothing
 ensureNonKeyword :: Ident 'IncludeKeywords -> Maybe (Ident 'ExcludeKeywords)
 ensureNonKeyword (Ident name) | JSC.nameIsJsReserved name = Nothing
@@ -89,9 +89,9 @@ ensureNonKeyword (Ident name) | JSC.nameIsJsReserved name = Nothing
 
 -- |
 -- >>> ensureIdentifierName "foo"
--- Just (JSIdent "foo")
+-- Just (Ident "foo")
 -- >>> ensureIdentifierName "for"
--- Just (JSIdent "for")
+-- Just (Ident "for")
 -- >>> ensureIdentifierName "foo'"
 -- Nothing
 ensureIdentifierName :: T.Text -> Maybe (Ident 'IncludeKeywords)
