@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -10,10 +11,10 @@ import qualified Data.Map as Map
 import           Data.Text (Text)
 import qualified Data.Text as T
 import qualified Language.PureScript.CodeGen.Tsd.Identifier as JS
-import qualified Language.PureScript.Constants as C
+import qualified Language.PureScript.Constants.Compat as C
 import           Language.PureScript.Environment
 import           Language.PureScript.Errors
-import           Language.PureScript.Kinds
+import           Language.PureScript.Kinds.Compat
 import           Language.PureScript.Label
 import           Language.PureScript.Names
 import           Language.PureScript.PSString
@@ -171,7 +172,11 @@ pursTypeToTSType = go
                                 in (emptyCheckState env') { checkCurrentModule = Just ttcCurrentModuleName })
           case runExcept (evalStateT (kindOfWithScopedVars ty) checkState) of
             Left err -> throwError err
+#if MIN_VERSION_purescript(0, 14, 0)
+            Right ((kinds,_ty'),kind)
+#else
             Right (kind,kinds)
+#endif
               | kind == kindType -> withReaderT (\r -> r { ttcScopedVarKinds = Just kinds }) (m kinds)
               | otherwise -> throwError (errorMessage (ExpectedType ty kind))
 
@@ -192,7 +197,7 @@ isLessSimpleKind k               | k == kindType = True
 isLessSimpleKind (FunKind _ s t) = isSimpleKind s && isLessSimpleKind t
 isLessSimpleKind _               = False
 
-extractTypes :: SourceKind -> [(a,Maybe SourceKind)] -> Maybe [a]
+extractTypes :: SourceKind -> [(a, Maybe SourceKind)] -> Maybe [a]
 extractTypes k [] | k == kindType = return []
 extractTypes (FunKind _ kind1 r) ((name,kind2):xs)
   | kind1 == kindType && (kind2 == Just kindType || kind2 == Nothing) = (name :) <$> extractTypes r xs

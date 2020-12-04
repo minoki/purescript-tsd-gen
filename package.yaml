@@ -18,9 +18,14 @@ category:            Language
 # common to point users to the README.md file.
 description:         Please see the README on Github at <https://github.com/minoki/purescript-tsd-gen#readme>
 
+flags:
+  purs-v0_14:
+    description: "Build against purescript-v0.14.x"
+    manual: False
+    default: False
+
 dependencies:
 - base >= 4.7 && < 5
-- purescript >= 0.13.0 && < 0.14
 - aeson
 - bytestring
 - text
@@ -29,12 +34,26 @@ dependencies:
 - filepath
 - directory
 
+when:
+- condition: "flag(purs-v0_14)"
+  dependencies:
+  - purescript == 0.14.0
+  - purescript-ast
+- condition: "!flag(purs-v0_14)"
+  dependencies:
+  - purescript >= 0.13.0 && < 0.14
+
 ghc-options:
 - -Wall
 
 library:
   source-dirs: src
   other-modules:
+  - Language.PureScript.Constants.Compat
+  - Language.PureScript.Environment.Compat
+  - Language.PureScript.Externs.Compat
+  - Language.PureScript.Kinds.Compat
+  - Language.PureScript.Pretty.Compat
   - Language.PureScript.TsdGen.Hardwired
   - Language.PureScript.TsdGen.Module.ReadExterns
   - Paths_purescript_tsd_gen

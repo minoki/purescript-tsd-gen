@@ -2,9 +2,11 @@
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ViewPatterns #-}
 module Language.PureScript.TsdGen.Module
   ( module Language.PureScript.TsdGen.Module
-  , module Language.PureScript.TsdGen.Module.ReadExterns
+  , ModuleProcessingError (..)
+  , readExternsForModule
   ) where
 import           Control.Monad.Except
 import           Control.Monad.Reader
@@ -21,13 +23,14 @@ import qualified Data.Text.Lazy.Builder as TB
 import           Data.Version (showVersion)
 import qualified Language.PureScript.CodeGen.Tsd.Identifier as JS
 import           Language.PureScript.CodeGen.Tsd.Types
-import qualified Language.PureScript.Constants as C
+import qualified Language.PureScript.Constants.Compat as C
 import           Language.PureScript.Environment
+import           Language.PureScript.Environment.Compat -- (stripRole, pattern DataType')
 import           Language.PureScript.Errors
-import           Language.PureScript.Externs
+import           Language.PureScript.Externs.Compat
 import           Language.PureScript.Label
 import           Language.PureScript.Names
-import           Language.PureScript.Pretty.Kinds
+import           Language.PureScript.Pretty.Compat (prettyPrintKind)
 import           Language.PureScript.PSString
 import           Language.PureScript.TsdGen.Hardwired
 import           Language.PureScript.TsdGen.Module.ReadExterns (ModuleProcessingError (..),
@@ -216,7 +219,7 @@ processLoadedModule env ef importAll = execWriterT $ do
       if isSimpleKind edTypeKind
         then case edTypeDeclarationKind of
                -- newtype declaration:
-               DataType params [(ctorPName,[member])]
+               DataType (stripRole -> params) [(ctorPName,[member])]
                  | Just (Newtype,_,_,_) <- Map.lookup (qualCurrentModule ctorPName) (dataConstructors env) -> do
                      case extractTypes edTypeKind params of
                        Just typeParameters -> do
@@ -226,7 +229,7 @@ processLoadedModule env ef importAll = execWriterT $ do
                          emitComment $ "newtype " <> runProperName name <> ": kind annotation was not available"
 
                -- data declaration:
-               DataType params ctors -> do
+               DataType (stripRole -> params) ctors -> do
                  case extractTypes edTypeKind params of
                    Just typeParameters -> do
                      let buildCtorType (ctorPName,members)
@@ -260,7 +263,7 @@ processLoadedModule env ef importAll = execWriterT $ do
                  | otherwise -> emitComment ("type (synonym) " <> runProperName name <> ": " <> prettyPrintKind edTypeKind)
 
                -- foreign import data:
-               ExternData
+               ExternData {}
                  | qTypeName == qnUnit -> do
                      -- Data.Unit
                      emitTypeDeclaration (Just "builtin") (psNameToJSExportName "Unit") [] (TSRecord [(mkOptionalField "$$pursType" (TSStringLit "Data.Unit.Unit"))])
@@ -286,7 +289,7 @@ processLoadedModule env ef importAll = execWriterT $ do
     processDecl EDDataConstructor{..} = do
       let name = edDataCtorName
       case Map.lookup (qualCurrentModule edDataCtorTypeCtor) (types env) of
-        Just (k, DataType typeParameters constructors)
+        Just (k, DataType (stripRole -> typeParameters) constructors)
           | isSimpleKind k
           , Just fieldTypes <- List.lookup edDataCtorName constructors -> do
               tsty <- pursTypeToTSTypeX [] edDataCtorType
@@ -341,9 +344,9 @@ processLoadedModule env ef importAll = execWriterT $ do
       where -- name = identToJs edInstanceName :: JS.Identifier
             qDictTypeName = fmap coerceProperName edInstanceClassName :: Qualified (ProperName 'TypeName)
 
-    processDecl EDKind{..} = do
+    processDecl EDKind { edKindName = kindName } = do
       -- Do nothing for kind declarations: just put a comment.
-      let name = runProperName edKindName
+      let name = runProperName kindName
       emitComment ("kind " <> name)
 
     processDecl EDTypeSynonym{} = do
