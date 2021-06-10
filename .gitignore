@@ -1,4 +1,5 @@
 .stack-work/
+dist-newstyle/
 purescript-tsd-gen.cabal
 *~
 *.yaml.lock
