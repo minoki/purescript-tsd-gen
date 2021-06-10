@@ -54,28 +54,17 @@ when:
 ghc-options:
 - -Wall
 
-library:
-  source-dirs: src
-  other-modules:
-  - Language.PureScript.Constants.Compat
-  - Language.PureScript.Environment.Compat
-  - Language.PureScript.Externs.Compat
-  - Language.PureScript.Kinds.Compat
-  - Language.PureScript.Pretty.Compat
-  - Language.PureScript.TsdGen.Hardwired
-  - Language.PureScript.TsdGen.Module.ReadExterns
-  - Paths_purescript_tsd_gen
-
 executables:
   purs-tsd-gen:
     main:                Main.hs
-    source-dirs:         app
+    source-dirs:
+    - app
+    - src
     ghc-options:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
-    - purescript-tsd-gen
     - optparse-applicative
 
 tests:
