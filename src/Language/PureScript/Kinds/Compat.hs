@@ -1,5 +1,5 @@
 {-# LANGUAGE CPP #-}
-#if defined(MIN_VERSION_purescript_ast)
+#if defined(MIN_VERSION_purescript_ast) || defined(MIN_VERSION_purescript_cst)
 {-# LANGUAGE PatternSynonyms #-}
 module Language.PureScript.Kinds.Compat
   ( SourceKind

@@ -1,0 +1,26 @@
+resolver: lts-17.6
+
+packages:
+  - .
+
+extra-deps:
+  - purescript-0.14.2
+  - purescript-cst-0.2.0.0
+  #- git: https://github.com/purescript/purescript.git
+  #  commit: 0d570f6e3828fc1a93c7c20252bccb04b7d2b0f6
+  #  subdirs:
+  #    - .
+  #    - lib/purescript-ast
+  #    - lib/purescript-cst
+  - language-javascript-0.7.0.0
+
+flags:
+  aeson-pretty:
+    lib-only: true
+  these:
+    assoc: false
+  haskeline:
+    terminfo: false
+  purescript-tsd-gen:
+    purescript-ast: false
+    purescript-cst: true

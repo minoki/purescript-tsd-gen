@@ -4,7 +4,7 @@ github:              "minoki/purescript-tsd-gen"
 license:             BSD3
 author:              "ARATA Mizuki <minorinoki@gmail.com>"
 maintainer:          "ARATA Mizuki <minorinoki@gmail.com>"
-copyright:           "2018-2019 ARATA Mizuki"
+copyright:           "2018-2021 ARATA Mizuki"
 
 extra-source-files:
 - README.md
@@ -19,8 +19,12 @@ category:            Language
 description:         Please see the README on Github at <https://github.com/minoki/purescript-tsd-gen#readme>
 
 flags:
-  purs-v0_14:
-    description: "Build against purescript-v0.14.x"
+  purescript-ast:
+    description: "Build against purescript-ast package (purescript-0.14.{0,1})"
+    manual: False
+    default: False
+  purescript-cst:
+    description: "Build against purescript-cst package (purescript-0.14.2)"
     manual: False
     default: False
 
@@ -35,11 +39,15 @@ dependencies:
 - directory
 
 when:
-- condition: "flag(purs-v0_14)"
+- condition: "flag(purescript-cst) && !flag(purescript-ast)"
   dependencies:
-  - purescript == 0.14.0
+  - purescript >= 0.14.2 && < 0.15
+  - purescript-cst
+- condition: "flag(purescript-ast) && !flag(purescript-cst)"
+  dependencies:
+  - purescript >= 0.14.0 && < 0.14.2
   - purescript-ast
-- condition: "!flag(purs-v0_14)"
+- condition: "!flag(purescript-ast) && !flag(purescript-cst)"
   dependencies:
   - purescript >= 0.13.0 && < 0.14
 

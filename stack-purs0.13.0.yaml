@@ -6,3 +6,8 @@ packages:
 extra-deps:
 - purescript-0.13.0
 - network-3.0.1.1
+
+flags:
+  purescript-tsd-gen:
+    purescript-ast: false
+    purescript-cst: false

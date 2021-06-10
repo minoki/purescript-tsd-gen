@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -25,7 +26,7 @@ import qualified Language.PureScript.CodeGen.Tsd.Identifier as JS
 import           Language.PureScript.CodeGen.Tsd.Types
 import qualified Language.PureScript.Constants.Compat as C
 import           Language.PureScript.Environment
-import           Language.PureScript.Environment.Compat -- (stripRole, pattern DataType')
+import           Language.PureScript.Environment.Compat
 import           Language.PureScript.Errors
 import           Language.PureScript.Externs.Compat
 import           Language.PureScript.Label
@@ -128,9 +129,7 @@ emitValueDeclaration comment vname ty = case vname of
     -- Such identifiers cannot be used in ES6 modules.
     -- See: https://github.com/purescript/purescript/issues/2558
     --      https://github.com/purescript/purescript/issues/3613
-    tell $ "declare const " <> JS.identToBuilder internalName <> ": " <> showTSType ty <> ";\n\
-           \// The identifier \"" <> TB.fromText nonExportableName <> "\" cannot be expressed in JavaScript:\n\
-           \// export " <> commentPart <> "{ " <> JS.identToBuilder internalName <> " as " <> TB.fromText nonExportableName <> " };\n"
+    tell $ "declare const " <> JS.identToBuilder internalName <> ": " <> showTSType ty <> ";\n// The identifier \"" <> TB.fromText nonExportableName <> "\" cannot be expressed in JavaScript:\n// export " <> commentPart <> "{ " <> JS.identToBuilder internalName <> " as " <> TB.fromText nonExportableName <> " };\n"
   where commentPart = case comment of
                         Just commentText -> "/*" <> TB.fromText commentText <> "*/ "
                         Nothing -> mempty
@@ -219,7 +218,11 @@ processLoadedModule env ef importAll = execWriterT $ do
       if isSimpleKind edTypeKind
         then case edTypeDeclarationKind of
                -- newtype declaration:
+#if MIN_VERSION_purescript(0, 14, 1)
+               DataType _dataDeclType (stripRole -> params) [(ctorPName,[member])]
+#else
                DataType (stripRole -> params) [(ctorPName,[member])]
+#endif
                  | Just (Newtype,_,_,_) <- Map.lookup (qualCurrentModule ctorPName) (dataConstructors env) -> do
                      case extractTypes edTypeKind params of
                        Just typeParameters -> do
@@ -229,7 +232,11 @@ processLoadedModule env ef importAll = execWriterT $ do
                          emitComment $ "newtype " <> runProperName name <> ": kind annotation was not available"
 
                -- data declaration:
+#if MIN_VERSION_purescript(0, 14, 1)
+               DataType _dataDeclType (stripRole -> params) ctors -> do
+#else
                DataType (stripRole -> params) ctors -> do
+#endif
                  case extractTypes edTypeKind params of
                    Just typeParameters -> do
                      let buildCtorType (ctorPName,members)
@@ -289,7 +296,11 @@ processLoadedModule env ef importAll = execWriterT $ do
     processDecl EDDataConstructor{..} = do
       let name = edDataCtorName
       case Map.lookup (qualCurrentModule edDataCtorTypeCtor) (types env) of
+#if MIN_VERSION_purescript(0, 14, 1)
+        Just (k, DataType _dataDeclType (stripRole -> typeParameters) constructors)
+#else
         Just (k, DataType (stripRole -> typeParameters) constructors)
+#endif
           | isSimpleKind k
           , Just fieldTypes <- List.lookup edDataCtorName constructors -> do
               tsty <- pursTypeToTSTypeX [] edDataCtorType
@@ -323,7 +334,7 @@ processLoadedModule env ef importAll = execWriterT $ do
                   emitValueDeclaration (Just "newtype data ctor") (psNameToJSExportName (runProperName name)) tsty
 
         Nothing -> emitComment $ "the type of an exported data constructor must be exported: " <> runProperName name
-        Just (k, DataType _typeParameters _constructors) -> emitComment $ "unrecognized data constructor: " <> runProperName name <> " kind: " <> prettyPrintKind k
+        Just (k, DataType {}) -> emitComment $ "unrecognized data constructor: " <> runProperName name <> " kind: " <> prettyPrintKind k
         _ -> emitComment $ "unrecognized data constructor: " <> runProperName name
 
     processDecl EDValue{..} = do

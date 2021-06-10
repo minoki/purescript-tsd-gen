@@ -4,13 +4,9 @@ packages:
   - .
 
 extra-deps:
-  # purescript-0.14.0-rc3
-  - git: https://github.com/purescript/purescript.git
-    commit: 48634d05da1021ac1bcb4907461ae9b2d3b0e699
-    subdirs:
-      - .
-      - lib/purescript-ast
-      - lib/purescript-cst
+  - purescript-0.14.0
+  - purescript-ast-0.1.0.0
+  - purescript-cst-0.1.0.0
   - network-3.0.1.1
   - happy-1.19.9
   - language-javascript-0.7.0.0
@@ -24,4 +20,5 @@ flags:
     assoc: false
     quickcheck: false
   purescript-tsd-gen:
-    purs-v0_14: true
+    purescript-ast: true
+    purescript-cst: false

@@ -12,3 +12,6 @@ extra-deps:
 flags:
   aeson-pretty:
     lib-only: true
+  purescript-tsd-gen:
+    purescript-ast: false
+    purescript-cst: false
