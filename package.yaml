@@ -53,6 +53,7 @@ when:
 
 ghc-options:
 - -Wall
+- -Wcompat
 
 executables:
   purs-tsd-gen:
