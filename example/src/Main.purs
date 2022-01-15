@@ -3,7 +3,8 @@ module Main where
 import Prelude (Unit, show, (#), ($), (+))
 import Effect (Effect)
 import Effect.Console (log)
-import Data.Variant (SProxy(..), Variant, case_, on)
+import Type.Proxy (Proxy(..))
+import Data.Variant (Variant, case_, on)
 import Data.Nullable (Nullable, toMaybe)
 import Data.Maybe (Maybe(..))
 import Data.Tuple (Tuple(..))
@@ -15,8 +16,8 @@ main = do
   log "Hello sailor!"
 
 variantToString :: Variant (num :: Number, str :: String) -> String
-variantToString = case_ # on (SProxy :: SProxy "num") show
-                        # on (SProxy :: SProxy "str") (\x -> x)
+variantToString = case_ # on (Proxy :: Proxy "num") show
+                        # on (Proxy :: Proxy "str") (\x -> x)
 
 nullableToString :: Nullable String -> String
 nullableToString x = case toMaybe x of
