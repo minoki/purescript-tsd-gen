@@ -139,11 +139,11 @@ pursTypeToTSType = go
       case s' of
         TSNamed n a -> pure (TSNamed n (a ++ [t']))
         _           -> pure (TSUnknown $ T.pack $ show ty)
-    go ty@(TypeConstructor _ (Qualified (Just C.Prim) typeName)) = do
+    go ty@(TypeConstructor _ (Qualified (ByModuleName C.Prim) typeName)) = do
       case typeName of
         ProperName "Partial" -> pure (TSUnknown "Prim.Partial")
         _                    -> pure (TSUnknown $ T.pack $ show ty)
-    go ty@(TypeConstructor _ qName@(Qualified (Just moduleName) typeName)) = do
+    go ty@(TypeConstructor _ qName@(Qualified (ByModuleName moduleName) typeName)) = do
       ti <- asks (Map.lookup qName . types . ttcEnvironment)
       case ti of
         Just (k, _) | isSimpleKind k -> do
@@ -167,7 +167,7 @@ pursTypeToTSType = go
         Just kinds -> m kinds
         Nothing -> do
           checkState <- asks (\TypeTranslationContext{..} ->
-                                let insertLocalTyVar env v = Map.insert (Qualified (Just ttcCurrentModuleName) (ProperName v)) (kindType, LocalTypeVariable) env
+                                let insertLocalTyVar env v = Map.insert (Qualified (ByModuleName ttcCurrentModuleName) (ProperName v)) (kindType, LocalTypeVariable) env
                                     env' = ttcEnvironment { types = foldl insertLocalTyVar (types ttcEnvironment) ttcBoundTyVars }
                                 in (emptyCheckState env') { checkCurrentModule = Just ttcCurrentModuleName })
           case runExcept (evalStateT (kindOfWithScopedVars ty) checkState) of

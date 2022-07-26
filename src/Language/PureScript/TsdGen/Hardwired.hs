@@ -7,13 +7,13 @@ import Language.PureScript.Errors (nullSourceAnn)
 
 -- Data.Unit
 qnUnit :: Qualified (ProperName 'TypeName)
-qnUnit = Qualified (Just (moduleNameFromString "Data.Unit")) (ProperName "Unit")
+qnUnit = mkQualified (ProperName "Unit") (moduleNameFromString "Data.Unit")
 
 -- Data.Function.Uncurried
 qnFn0, qnFn2, qnFn3, qnFn4, qnFn5, qnFn6, qnFn7, qnFn8, qnFn9, qnFn10 :: Qualified (ProperName 'TypeName)
 tyFn0, tyFn2, tyFn3, tyFn4, tyFn5, tyFn6, tyFn7, tyFn8, tyFn9, tyFn10 :: SourceType
-modDataFunctionUncurried :: Maybe ModuleName
-modDataFunctionUncurried = Just (moduleNameFromString "Data.Function.Uncurried")
+modDataFunctionUncurried :: QualifiedBy
+modDataFunctionUncurried = ByModuleName (moduleNameFromString "Data.Function.Uncurried")
 qnFn0 = Qualified modDataFunctionUncurried (ProperName "Fn0")
 qnFn2 = Qualified modDataFunctionUncurried (ProperName "Fn2")
 qnFn3 = Qualified modDataFunctionUncurried (ProperName "Fn3")
@@ -38,8 +38,8 @@ tyFn10 = TypeConstructor nullSourceAnn qnFn10
 -- Effect.Uncurried
 qnEffectFn1, qnEffectFn2, qnEffectFn3, qnEffectFn4, qnEffectFn5, qnEffectFn6, qnEffectFn7, qnEffectFn8, qnEffectFn9, qnEffectFn10 :: Qualified (ProperName 'TypeName)
 tyEffectFn1, tyEffectFn2, tyEffectFn3, tyEffectFn4, tyEffectFn5, tyEffectFn6, tyEffectFn7, tyEffectFn8, tyEffectFn9, tyEffectFn10 :: SourceType
-modEffectUncurried :: Maybe ModuleName
-modEffectUncurried = Just (moduleNameFromString "Effect.Uncurried")
+modEffectUncurried :: QualifiedBy
+modEffectUncurried = ByModuleName (moduleNameFromString "Effect.Uncurried")
 qnEffectFn1 = Qualified modEffectUncurried (ProperName "EffectFn1")
 qnEffectFn2 = Qualified modEffectUncurried (ProperName "EffectFn2")
 qnEffectFn3 = Qualified modEffectUncurried (ProperName "EffectFn3")
@@ -64,37 +64,37 @@ tyEffectFn10 = TypeConstructor nullSourceAnn qnEffectFn10
 -- Data.StrMap (from purescript-maps)
 -- foreign import data StrMap :: Type -> Type
 qnStrMap :: Qualified (ProperName 'TypeName)
-qnStrMap = Qualified (Just (moduleNameFromString "Data.StrMap")) (ProperName "StrMap")
+qnStrMap = mkQualified (ProperName "StrMap") (moduleNameFromString "Data.StrMap")
 tyStrMap :: SourceType
 tyStrMap = TypeConstructor nullSourceAnn qnStrMap
 
 -- Control.Monad.Eff
 -- foreign import data Eff :: # Effect -> Type -> Type
 tyEff :: SourceType
-tyEff = TypeConstructor nullSourceAnn (Qualified (Just (moduleNameFromString "Control.Monad.Eff")) (ProperName "Eff"))
+tyEff = TypeConstructor nullSourceAnn (mkQualified (ProperName "Eff") (moduleNameFromString "Control.Monad.Eff"))
 
 -- Effect (from purescript-effect)
 -- foreign import data Effect :: Type -> Type
 qnEffect :: Qualified (ProperName 'TypeName)
-qnEffect = Qualified (Just (moduleNameFromString "Effect")) (ProperName "Effect")
+qnEffect = mkQualified (ProperName "Effect") (moduleNameFromString "Effect")
 tyEffect :: SourceType
 tyEffect = TypeConstructor nullSourceAnn qnEffect
 
 -- Data.Variant (from purescript-variant)
 -- foreign import data Variant :: # Type -> Type
 tyVariant :: SourceType
-tyVariant = TypeConstructor nullSourceAnn (Qualified (Just (moduleNameFromString "Data.Variant")) (ProperName "Variant"))
+tyVariant = TypeConstructor nullSourceAnn (mkQualified (ProperName "Variant") (moduleNameFromString "Data.Variant"))
 
 -- Data.Nullable (from purescript-nullable)
 -- foreign import data Nullable :: Type -> Type
 qnNullable :: Qualified (ProperName 'TypeName)
-qnNullable = Qualified (Just (moduleNameFromString "Data.Nullable")) (ProperName "Nullable")
+qnNullable = mkQualified (ProperName "Nullable") (moduleNameFromString "Data.Nullable")
 tyNullable :: SourceType
 tyNullable = TypeConstructor nullSourceAnn qnNullable
 
 -- Foreign.Object (from purescript-foreign-object)
 -- foreign import data Object :: Type -> Type
 qnForeignObject :: Qualified (ProperName 'TypeName)
-qnForeignObject = Qualified (Just (moduleNameFromString "Foreign.Object")) (ProperName "Object")
+qnForeignObject = mkQualified (ProperName "Object") (moduleNameFromString "Foreign.Object")
 tyForeignObject :: SourceType
 tyForeignObject = TypeConstructor nullSourceAnn qnForeignObject

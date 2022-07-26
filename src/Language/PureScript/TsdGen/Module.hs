@@ -186,7 +186,7 @@ processLoadedModule env ef importAll = execWriterT $ do
     currentModuleName = efModuleName ef
 
     qualCurrentModule :: a -> Qualified a
-    qualCurrentModule = Qualified (Just currentModuleName)
+    qualCurrentModule = Qualified (ByModuleName currentModuleName)
 
     -- Get the JS identifier for given module
     getModuleId :: ModuleName -> ModuleWriter (Maybe JS.Identifier)
