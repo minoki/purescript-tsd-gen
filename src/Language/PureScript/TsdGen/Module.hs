@@ -291,7 +291,7 @@ processLoadedModule env ef importAll = execWriterT $ do
                LocalTypeVariable -> emitComment ("unexpected local type variable: " <> runProperName name <> " :: " <> prettyPrintKind edTypeKind)
                ScopedTypeVar -> emitComment ("unexpected scoped type variable: " <> runProperName name <> " :: " <> prettyPrintKind edTypeKind)
 
-        else emitComment ("type " <> runProperName name <> " :: " <> prettyPrintKind edTypeKind <> " : unsupported kind")
+        else emitComment ("type " <> runProperName name <> " :: " <> (T.strip $ prettyPrintKind edTypeKind) <> " : unsupported kind")
 
     processDecl EDDataConstructor{..} = do
       let name = edDataCtorName
@@ -344,16 +344,17 @@ processLoadedModule env ef importAll = execWriterT $ do
 
     processDecl EDInstance{..}
       | Just constraints <- edInstanceConstraints
-      , Just (_synonymParams,_synonymType) <- Map.lookup qDictTypeName (typeSynonyms env) = do
+      , Just typeClassDict <- Map.lookup (ByModuleName currentModuleName) (typeClassDictionaries env)
+      , Just _ <- Map.lookup edInstanceClassName typeClassDict = do
           -- TODO: This code depends on the undocumented implementation-details...
           let {-synonymInstance = replaceAllTypeVars (zip (freeTypeVariables synonymType) edInstanceTypes) synonymType-}
-              dictTy = foldl (TypeApp nullSourceAnn) (TypeConstructor nullSourceAnn qDictTypeName) edInstanceTypes
-              desugaredInstanceType = quantify (foldr (ConstrainedType nullSourceAnn) dictTy constraints)
+              dictTy = foldl srcTypeApp (srcTypeConstructor qDictTypeName) edInstanceTypes
+              desugaredInstanceType = quantify (foldr srcConstrainedType dictTy constraints)
           instanceTy <- pursTypeToTSTypeX [] desugaredInstanceType
           emitValueDeclaration (Just "instance") (psNameToJSExportName (runIdent edInstanceName)) instanceTy
       | otherwise = emitComment ("invalid instance declaration '" <> runIdent edInstanceName <> "'")
       where -- name = identToJs edInstanceName :: JS.Identifier
-            qDictTypeName = fmap coerceProperName edInstanceClassName :: Qualified (ProperName 'TypeName)
+            qDictTypeName = fmap (coerceProperName . dictTypeName) edInstanceClassName :: Qualified (ProperName 'TypeName)
 
     processDecl EDKind { edKindName = kindName } = do
       -- Do nothing for kind declarations: just put a comment.
