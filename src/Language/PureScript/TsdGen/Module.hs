@@ -77,18 +77,13 @@ emitInterface name tyParams fields = do
 
 data ExportName = NeedsRenaming { exportedName :: JS.IdentifierName, internalName :: JS.Identifier }
                 | NoRenaming JS.Identifier
-                | NotExpressibleInJSModule { nonExportableName :: Text, internalName :: JS.Identifier }
-
 psNameToJSExportName :: Text -> ExportName
 psNameToJSExportName psName
   = let internalName = JS.anyNameToJs psName
-    in case JS.ensureIdentifierName psName of
-         Nothing -> NotExpressibleInJSModule { nonExportableName = psName -- may contain a prime symbol
-                                             , internalName
-                                             }
-         Just identifierName
-           | JS.identToText internalName == JS.identToText identifierName -> NoRenaming internalName
-           | otherwise -> NeedsRenaming { exportedName = identifierName
+        identifierName = JS.toIdentifierName internalName
+    in if JS.identToText internalName == JS.identToText identifierName
+      then NoRenaming internalName
+      else NeedsRenaming { exportedName = identifierName
                                         , internalName
                                         }
 
@@ -114,8 +109,6 @@ emitTypeDeclaration comment ename tyParams ty = do
     NeedsRenaming { exportedName, internalName } -> do
       tell $ "type " <> commentPart <> JS.identToBuilder internalName <> tyParamsText <> " = " <> showTSType ty <> ";\n"
       emitRenamedExport (Just "type") exportedName internalName
-    NotExpressibleInJSModule { internalName } -> do
-      tell $ "export type " <> commentPart <> JS.identToBuilder internalName <> tyParamsText <> " = " <> showTSType ty <> ";\n"
 
 emitValueDeclaration :: Maybe Text -> ExportName -> TSType -> ModuleWriter ()
 emitValueDeclaration comment vname ty = case vname of
@@ -124,12 +117,6 @@ emitValueDeclaration comment vname ty = case vname of
     emitRenamedExport (Just "value") exportedName internalName
   NoRenaming name -> do
     tell $ "export const " <> commentPart <> JS.identToBuilder name <> ": " <> showTSType ty <> ";\n"
-  NotExpressibleInJSModule { nonExportableName, internalName } -> do
-    -- As of PureScript 0.13.5, the compiler emits symbols that contain prime symbol `'`;
-    -- Such identifiers cannot be used in ES6 modules.
-    -- See: https://github.com/purescript/purescript/issues/2558
-    --      https://github.com/purescript/purescript/issues/3613
-    tell $ "declare const " <> JS.identToBuilder internalName <> ": " <> showTSType ty <> ";\n// The identifier \"" <> TB.fromText nonExportableName <> "\" cannot be expressed in JavaScript:\n// export " <> commentPart <> "{ " <> JS.identToBuilder internalName <> " as " <> TB.fromText nonExportableName <> " };\n"
   where commentPart = case comment of
                         Just commentText -> "/*" <> TB.fromText commentText <> "*/ "
                         Nothing -> mempty

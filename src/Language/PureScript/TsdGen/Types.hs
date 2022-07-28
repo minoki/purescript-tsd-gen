@@ -151,10 +151,7 @@ pursTypeToTSType = go
           moduleId <- lift (lift (getModuleId moduleName))
           let tsTypeName = case moduleId of
                              Nothing -> UnqualifiedTypeName $ JS.properToJs typeName
-                             Just moduleId' -> QualifiedTypeName moduleId' $
-                               case JS.ensureIdentifierName (runProperName typeName) of
-                                 Just identifierName -> identifierName
-                                 Nothing -> JS.toIdentifierName $ JS.properToJs typeName -- may contain prime in the type name
+                             Just moduleId' -> QualifiedTypeName moduleId' $ JS.toIdentifierName $ JS.properToJs typeName
           pure $ TSNamed tsTypeName []
         _ -> pure (TSUnknown $ T.pack $ show ty)
     go (ConstrainedType _ ct inner) = tsFunction go [constraintToType ct] inner
