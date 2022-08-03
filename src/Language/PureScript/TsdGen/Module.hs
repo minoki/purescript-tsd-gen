@@ -173,7 +173,11 @@ processLoadedModule env ef importAll = execWriterT $ do
     currentModuleName = efModuleName ef
 
     qualCurrentModule :: a -> Qualified a
+#if MIN_VERSION_purescript(0, 15, 3)
     qualCurrentModule = Qualified (ByModuleName currentModuleName)
+#else
+    qualCurrentModule = Qualified (Just currentModuleName)
+#endif
 
     -- Get the JS identifier for given module
     getModuleId :: ModuleName -> ModuleWriter (Maybe JS.Identifier)
@@ -205,11 +209,7 @@ processLoadedModule env ef importAll = execWriterT $ do
       if isSimpleKind edTypeKind
         then case edTypeDeclarationKind of
                -- newtype declaration:
-#if MIN_VERSION_purescript(0, 14, 1)
                DataType _dataDeclType (stripRole -> params) [(ctorPName,[member])]
-#else
-               DataType (stripRole -> params) [(ctorPName,[member])]
-#endif
                  | Just (Newtype,_,_,_) <- Map.lookup (qualCurrentModule ctorPName) (dataConstructors env) -> do
                      case extractTypes edTypeKind params of
                        Just typeParameters -> do
@@ -219,11 +219,7 @@ processLoadedModule env ef importAll = execWriterT $ do
                          emitComment $ "newtype " <> runProperName name <> ": kind annotation was not available"
 
                -- data declaration:
-#if MIN_VERSION_purescript(0, 14, 1)
                DataType _dataDeclType (stripRole -> params) ctors -> do
-#else
-               DataType (stripRole -> params) ctors -> do
-#endif
                  case extractTypes edTypeKind params of
                    Just typeParameters -> do
                      let buildCtorType (ctorPName,members)
@@ -283,11 +279,7 @@ processLoadedModule env ef importAll = execWriterT $ do
     processDecl EDDataConstructor{..} = do
       let name = edDataCtorName
       case Map.lookup (qualCurrentModule edDataCtorTypeCtor) (types env) of
-#if MIN_VERSION_purescript(0, 14, 1)
         Just (k, DataType _dataDeclType (stripRole -> typeParameters) constructors)
-#else
-        Just (k, DataType (stripRole -> typeParameters) constructors)
-#endif
           | isSimpleKind k
           , Just fieldTypes <- List.lookup edDataCtorName constructors -> do
               tsty <- pursTypeToTSTypeX [] edDataCtorType
@@ -331,7 +323,11 @@ processLoadedModule env ef importAll = execWriterT $ do
 
     processDecl EDInstance{..}
       | Just constraints <- edInstanceConstraints
+#if MIN_VERSION_purescript(0, 15, 3)
       , Just typeClassDict <- Map.lookup (ByModuleName currentModuleName) (typeClassDictionaries env)
+#else
+      , Just typeClassDict <- Map.lookup (Just currentModuleName) (typeClassDictionaries env)
+#endif
       , Just _ <- Map.lookup edInstanceClassName typeClassDict = do
           -- TODO: This code depends on the undocumented implementation-details...
           let {-synonymInstance = replaceAllTypeVars (zip (freeTypeVariables synonymType) edInstanceTypes) synonymType-}

@@ -8,7 +8,6 @@ module Language.PureScript.CodeGen.Tsd.Types
   , showTSTypePrec
   ) where
 import           Data.List (intersperse)
-import           Data.Monoid (mconcat, (<>))
 import qualified Data.Text.Lazy.Builder as TB
 import qualified Data.Text.Lazy.Builder.Int as TB
 import           Language.PureScript.CodeGen.JS.Common

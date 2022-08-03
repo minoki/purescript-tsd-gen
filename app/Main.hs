@@ -6,7 +6,6 @@ import           Control.Monad.State
 import qualified Data.List as List
 import qualified Data.Map as Map
 import           Data.Maybe
-import           Data.Monoid ((<>))
 import qualified Data.Text as T
 import qualified Data.Text.Lazy.Builder as TB
 import qualified Data.Text.Lazy.IO as TL

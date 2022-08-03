@@ -9,7 +9,15 @@ This tool helps you use PureScript modules from TypeScript.
 ```sh
 $ git clone https://github.com/minoki/purescript-tsd-gen.git
 $ cd purescript-tsd-gen
-$ stack install --stack-yaml=stack-purs0.14.7.yaml
+$ stack install --stack-yaml=stack-purs0.15.4.yaml
+```
+
+If you are using PureScript 0.14.x or older, try following:
+
+```sh
+$ git clone -b purs0.14.x https://github.com/minoki/purescript-tsd-gen.git
+$ cd purescript-tsd-gen
+$ stack install --stack-yaml=stack-purs0.14.9.yaml
 ```
 
 # How to use

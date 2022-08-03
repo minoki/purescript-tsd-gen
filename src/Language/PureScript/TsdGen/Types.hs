@@ -139,11 +139,19 @@ pursTypeToTSType = go
       case s' of
         TSNamed n a -> pure (TSNamed n (a ++ [t']))
         _           -> pure (TSUnknown $ T.pack $ show ty)
+#if MIN_VERSION_purescript(0, 15, 3)
     go ty@(TypeConstructor _ (Qualified (ByModuleName C.Prim) typeName)) = do
+#else
+    go ty@(TypeConstructor _ (Qualified (Just C.Prim) typeName)) = do
+#endif
       case typeName of
         ProperName "Partial" -> pure (TSUnknown "Prim.Partial")
         _                    -> pure (TSUnknown $ T.pack $ show ty)
+#if MIN_VERSION_purescript(0, 15, 3)
     go ty@(TypeConstructor _ qName@(Qualified (ByModuleName moduleName) typeName)) = do
+#else
+    go ty@(TypeConstructor _ qName@(Qualified (Just moduleName) typeName)) = do
+#endif
       ti <- asks (Map.lookup qName . types . ttcEnvironment)
       case ti of
         Just (k, _) | isSimpleKind k -> do
@@ -164,16 +172,16 @@ pursTypeToTSType = go
         Just kinds -> m kinds
         Nothing -> do
           checkState <- asks (\TypeTranslationContext{..} ->
+#if MIN_VERSION_purescript(0, 15, 3)
                                 let insertLocalTyVar env v = Map.insert (Qualified (ByModuleName ttcCurrentModuleName) (ProperName v)) (kindType, LocalTypeVariable) env
+#else
+                                let insertLocalTyVar env v = Map.insert (Qualified (Just ttcCurrentModuleName) (ProperName v)) (kindType, LocalTypeVariable) env
+#endif
                                     env' = ttcEnvironment { types = foldl insertLocalTyVar (types ttcEnvironment) ttcBoundTyVars }
                                 in (emptyCheckState env') { checkCurrentModule = Just ttcCurrentModuleName })
           case runExcept (evalStateT (kindOfWithScopedVars ty) checkState) of
             Left err -> throwError err
-#if MIN_VERSION_purescript(0, 14, 0)
             Right ((kinds,_ty'),kind)
-#else
-            Right (kind,kinds)
-#endif
               | kind == kindType -> withReaderT (\r -> r { ttcScopedVarKinds = Just kinds }) (m kinds)
               | otherwise -> throwError (errorMessage (ExpectedType ty kind))
 

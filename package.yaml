@@ -4,7 +4,7 @@ github:              "minoki/purescript-tsd-gen"
 license:             BSD3
 author:              "ARATA Mizuki <minorinoki@gmail.com>"
 maintainer:          "ARATA Mizuki <minorinoki@gmail.com>"
-copyright:           "2018-2021 ARATA Mizuki"
+copyright:           "2018-2022 ARATA Mizuki"
 
 extra-source-files:
 - README.md
@@ -18,20 +18,6 @@ category:            Language
 # common to point users to the README.md file.
 description:         Please see the README on Github at <https://github.com/minoki/purescript-tsd-gen#readme>
 
-flags:
-  purescript-15:
-    description: "Build against purescript only package (purescript-0.15)"
-    manual: False
-    default: False
-  purescript-ast:
-    description: "Build against purescript-ast package (purescript-0.14.{0,1})"
-    manual: False
-    default: False
-  purescript-cst:
-    description: "Build against purescript-cst package (purescript-0.14.2)"
-    manual: False
-    default: False
-
 dependencies:
 - base >= 4.7 && < 5
 - aeson
@@ -41,22 +27,7 @@ dependencies:
 - containers
 - filepath
 - directory
-
-when:
-- condition: "flag(purescript-15)"
-  dependencies:
-  - purescript >= 0.15.4
-- condition: "flag(purescript-cst) && !flag(purescript-ast) && !flag(purescript-15)"
-  dependencies:
-  - purescript >= 0.14.2 && < 0.15
-  - purescript-cst
-- condition: "flag(purescript-ast) && !flag(purescript-cst) && !flag(purescript-15)"
-  dependencies:
-  - purescript >= 0.14.0 && < 0.14.2
-  - purescript-ast
-- condition: "!flag(purescript-ast) && !flag(purescript-cst) && !flag(purescript-15)"
-  dependencies:
-  - purescript >= 0.13.0 && < 0.14
+- purescript >= 0.15.0
 
 ghc-options:
 - -Wall

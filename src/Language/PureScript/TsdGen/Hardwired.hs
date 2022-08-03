@@ -1,9 +1,19 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DataKinds #-}
 module Language.PureScript.TsdGen.Hardwired where
 import Language.PureScript.Types (SourceType, Type(TypeConstructor))
 import Language.PureScript.Names
 import Language.PureScript.Errors (nullSourceAnn)
+
+#if MIN_VERSION_purescript(0, 15, 3)
+byModuleName :: ModuleName -> QualifiedBy
+byModuleName = ByModuleName
+#else
+type QualifiedBy = Maybe ModuleName
+byModuleName :: ModuleName -> Maybe ModuleName
+byModuleName = Just
+#endif
 
 -- Data.Unit
 qnUnit :: Qualified (ProperName 'TypeName)
@@ -13,7 +23,7 @@ qnUnit = mkQualified (ProperName "Unit") (moduleNameFromString "Data.Unit")
 qnFn0, qnFn2, qnFn3, qnFn4, qnFn5, qnFn6, qnFn7, qnFn8, qnFn9, qnFn10 :: Qualified (ProperName 'TypeName)
 tyFn0, tyFn2, tyFn3, tyFn4, tyFn5, tyFn6, tyFn7, tyFn8, tyFn9, tyFn10 :: SourceType
 modDataFunctionUncurried :: QualifiedBy
-modDataFunctionUncurried = ByModuleName (moduleNameFromString "Data.Function.Uncurried")
+modDataFunctionUncurried = byModuleName (moduleNameFromString "Data.Function.Uncurried")
 qnFn0 = Qualified modDataFunctionUncurried (ProperName "Fn0")
 qnFn2 = Qualified modDataFunctionUncurried (ProperName "Fn2")
 qnFn3 = Qualified modDataFunctionUncurried (ProperName "Fn3")
@@ -39,7 +49,7 @@ tyFn10 = TypeConstructor nullSourceAnn qnFn10
 qnEffectFn1, qnEffectFn2, qnEffectFn3, qnEffectFn4, qnEffectFn5, qnEffectFn6, qnEffectFn7, qnEffectFn8, qnEffectFn9, qnEffectFn10 :: Qualified (ProperName 'TypeName)
 tyEffectFn1, tyEffectFn2, tyEffectFn3, tyEffectFn4, tyEffectFn5, tyEffectFn6, tyEffectFn7, tyEffectFn8, tyEffectFn9, tyEffectFn10 :: SourceType
 modEffectUncurried :: QualifiedBy
-modEffectUncurried = ByModuleName (moduleNameFromString "Effect.Uncurried")
+modEffectUncurried = byModuleName (moduleNameFromString "Effect.Uncurried")
 qnEffectFn1 = Qualified modEffectUncurried (ProperName "EffectFn1")
 qnEffectFn2 = Qualified modEffectUncurried (ProperName "EffectFn2")
 qnEffectFn3 = Qualified modEffectUncurried (ProperName "EffectFn3")

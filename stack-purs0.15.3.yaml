@@ -4,8 +4,8 @@ packages:
   - .
 
 extra-deps:
-  - purescript-0.15.4
-  - protolude-0.3.2
+  - purescript-0.15.3
+  - protolude-0.3.1
   - language-javascript-0.7.0.0
   - hspec-2.9.2
   - hspec-core-2.9.2
