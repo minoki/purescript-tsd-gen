@@ -28,14 +28,14 @@ Assuming you have compiled PureScript modules into `./output`:
 $ tree output/
 output/
 ├── Control.Alt
-│   ├── externs.json
+│   ├── externs.cbor
 │   └── index.js
 ├── Control.Alternative
-│   ├── externs.json
+│   ├── externs.cbor
 │   └── index.js
 ...
 └── YourFancyModuleInPurs
-    ├── externs.json
+    ├── externs.cbor
     └── index.js
 ```
 
@@ -51,16 +51,16 @@ Now you get `index.d.ts` alongside each module's `index.js`:
 $ tree output/
 output/
 ├── Control.Alt
-│   ├── externs.json
+│   ├── externs.cbor
 │   ├── index.d.ts
 │   └── index.js
 ├── Control.Alternative
-│   ├── externs.json
+│   ├── externs.cbor
 │   ├── index.d.ts
 │   └── index.js
 ...
 └── YourFancyModuleInPurs
-    ├── externs.json
+    ├── externs.cbor
     ├── index.d.ts
     └── index.js
 ```
