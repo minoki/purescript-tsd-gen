@@ -19,6 +19,10 @@ category:            Language
 description:         Please see the README on Github at <https://github.com/minoki/purescript-tsd-gen#readme>
 
 flags:
+  purescript-15:
+    description: "Build against purescript only package (purescript-0.15)"
+    manual: False
+    default: False
   purescript-ast:
     description: "Build against purescript-ast package (purescript-0.14.{0,1})"
     manual: False
@@ -39,15 +43,18 @@ dependencies:
 - directory
 
 when:
-- condition: "flag(purescript-cst) && !flag(purescript-ast)"
+- condition: "flag(purescript-15)"
+  dependencies:
+  - purescript >= 0.15.4
+- condition: "flag(purescript-cst) && !flag(purescript-ast) && !flag(purescript-15)"
   dependencies:
   - purescript >= 0.14.2 && < 0.15
   - purescript-cst
-- condition: "flag(purescript-ast) && !flag(purescript-cst)"
+- condition: "flag(purescript-ast) && !flag(purescript-cst) && !flag(purescript-15)"
   dependencies:
   - purescript >= 0.14.0 && < 0.14.2
   - purescript-ast
-- condition: "!flag(purescript-ast) && !flag(purescript-cst)"
+- condition: "!flag(purescript-ast) && !flag(purescript-cst) && !flag(purescript-15)"
   dependencies:
   - purescript >= 0.13.0 && < 0.14
 

@@ -1,0 +1,26 @@
+resolver: nightly-2022-06-09
+
+packages:
+  - .
+
+extra-deps:
+  - purescript-0.15.4
+  - protolude-0.3.2
+  - language-javascript-0.7.0.0
+  - hspec-2.9.2
+  - hspec-core-2.9.2
+  - hspec-discover-2.9.2
+  - process-1.6.13.1
+  - Cabal-3.6.3.0
+
+flags:
+  aeson-pretty:
+    lib-only: true
+  these:
+    assoc: false
+  haskeline:
+    terminfo: false
+  purescript-tsd-gen:
+    purescript-ast: false
+    purescript-cst: false
+    purescript-15: true

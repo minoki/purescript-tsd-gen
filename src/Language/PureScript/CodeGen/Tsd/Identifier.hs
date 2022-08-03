@@ -13,7 +13,6 @@ module Language.PureScript.CodeGen.Tsd.Identifier
   , properToJs
   , anyNameToJs
   , ensureNonKeyword
-  , ensureIdentifierName
   , appendWithDoubleDollars
   , toIdentifierName
   ) where
@@ -44,7 +43,7 @@ import qualified Language.PureScript.Names as PS
 
 isIdentifierStart, isIdentifierPart :: Char -> Bool
 isIdentifierStart c = isLetter c || c == '$' || c == '_' -- TODO: Match with "ID_Start"
-isIdentifierPart c = isAlphaNum c || c == '$' || c == '_' -- TODO: Match with "ID_Continue"
+isIdentifierPart c = isAlphaNum c || c == '$' || c == '\'' || c == '_' -- TODO: Match with "ID_Continue"
 
 -- |
 -- prop> all isIdentifierName ["foo", "x86", "PureScript", "$foobar", "__proto__"]
@@ -61,7 +60,7 @@ newtype Ident (k :: IncludeKeywords) = Ident T.Text
   deriving (Eq,Ord,Show)
 
 identToText :: Ident k -> T.Text
-identToText (Ident name) = name
+identToText (Ident name) = JSC.anyNameToJs name
 
 identToBuilder :: Ident k -> TB.Builder
 identToBuilder (Ident name) = TB.fromText name
@@ -87,16 +86,6 @@ ensureNonKeyword :: Ident 'IncludeKeywords -> Maybe (Ident 'ExcludeKeywords)
 ensureNonKeyword (Ident name) | JSC.nameIsJsReserved name = Nothing
                               | otherwise = Just (Ident name)
 
--- |
--- >>> ensureIdentifierName "foo"
--- Just (Ident "foo")
--- >>> ensureIdentifierName "for"
--- Just (Ident "for")
--- >>> ensureIdentifierName "foo'"
--- Nothing
-ensureIdentifierName :: T.Text -> Maybe (Ident 'IncludeKeywords)
-ensureIdentifierName name | isIdentifierName name = Just (Ident name)
-                          | otherwise = Nothing
 
 appendWithDoubleDollars :: Identifier -> Identifier -> Identifier
 appendWithDoubleDollars (Ident name1) (Ident name2) = Ident (name1 <> "$$" <> name2)
