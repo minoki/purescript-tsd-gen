@@ -6,3 +6,4 @@ purescript-tsd-gen.cabal
 example/.spago/
 example/node_modules/
 example/output/
+example/user.mjs

@@ -1,4 +1,4 @@
-import * as PursExample from "./output/Main";
+import * as PursExample from "./output/Main/index.js";
 
 console.log(PursExample.variantToString({type: "num", value: 123})); // => "123"
 console.log(PursExample.nullableToString(null)); // => "null"

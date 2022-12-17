@@ -122,10 +122,10 @@ emitValueDeclaration comment vname ty = case vname of
                         Nothing -> mempty
 
 emitNamespaceImport :: Monad m => JS.Identifier -> ModuleName -> WriterT TB.Builder m ()
-emitNamespaceImport ident moduleName = tell $ "import * as " <> JS.identToBuilder ident <> " from \"../" <> TB.fromText (runModuleName moduleName) <> "\";\n"
+emitNamespaceImport ident moduleName = tell $ "import * as " <> JS.identToBuilder ident <> " from \"../" <> TB.fromText (runModuleName moduleName) <> "/index.js\";\n"
 
 emitImport :: Monad m => ModuleName -> WriterT TB.Builder m ()
-emitImport moduleName = tell $ "import \"../" <> TB.fromText (runModuleName moduleName) <> "\";\n"
+emitImport moduleName = tell $ "import \"../" <> TB.fromText (runModuleName moduleName) <> "/index.js\";\n"
 
 processLoadedModule :: Environment -> ExternsFile -> Bool -> ExceptT ModuleProcessingError IO TB.Builder
 processLoadedModule env ef importAll = execWriterT $ do
