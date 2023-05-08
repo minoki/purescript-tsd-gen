@@ -1,6 +1,6 @@
 {
   "devDependencies": {
-    "purescript": "^0.15.8",
+    "purescript": "^0.15.9",
     "spago": "^0.20.9",
     "typescript": "^4.7.4"
   }
