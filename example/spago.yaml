@@ -1,0 +1,16 @@
+package:
+  dependencies:
+  - console
+  - effect
+  - foreign-object
+  - maybe
+  - nullable
+  - prelude
+  - psci-support
+  - tuples
+  - variant
+  name: example
+workspace:
+  extra_packages: {}
+  package_set:
+    registry: 29.1.0

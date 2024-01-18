@@ -1,0 +1,52 @@
+on: [push, pull_request]
+name: build and test
+jobs:
+  build-and-test:
+    name: build and test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - purs: '0.15.0'
+          - purs: '0.15.2'
+          - purs: '0.15.3'
+          - purs: '0.15.4'
+            registry: '10.0.0'
+          - purs: '0.15.5'
+          - purs: '0.15.6'
+          - purs: '0.15.7'
+            registry: '20.0.3'
+          - purs: '0.15.8'
+            registry: '27.2.0'
+          - purs: '0.15.9'
+            registry: '29.1.0'
+    steps:
+      - uses: actions/checkout@v3
+
+      # Already installed:
+      # - name: Install Stack
+      #   run: curl -sSL https://get.haskellstack.org/ | sh
+
+      - uses: actions/cache@v3
+        with:
+          path: ~/.stack
+          key: ${{ matrix.purs }}
+
+      - name: Build
+        run: stack build --stack-yaml=stack-purs${{ matrix.purs }}.yaml purescript purescript-tsd-gen
+
+      # - name: Doctest
+      #   run: stack test --stack-yaml=stack-purs${{ matrix.purs }}.yaml
+
+      - name: Compile and run the example
+        if: ${{ matrix.registry }}
+        working-directory: ./example
+        run: |
+          mv package.json package.json.tmp
+          jq '.devDependencies.purescript="${{ matrix.purs }}"' package.json.tmp > package.json
+          sed -i.bak -E -e 's/registry: [0-9]+\.[0-9]+\.[0-9]+/registry: ${{ matrix.registry }}/' spago.yaml
+          npm update && npm install
+          npx spago build
+          stack exec --stack-yaml=../stack-purs${{ matrix.purs }}.yaml -- purs-tsd-gen -d output
+          npx tsc --strict --module es2015 user.mts
+          node user.mjs
