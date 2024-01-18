@@ -1,0 +1,5 @@
+.spago/
+node_modules/
+output/
+user.mjs
+spago.lock

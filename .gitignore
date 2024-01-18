@@ -3,7 +3,3 @@ dist-newstyle/
 purescript-tsd-gen.cabal
 *~
 *.yaml.lock
-example/.spago/
-example/node_modules/
-example/output/
-example/user.mjs
