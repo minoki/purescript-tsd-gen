@@ -69,7 +69,7 @@ output/
 
 ## Builtin
 
-Primitive types translates as one would imagine:
+Primitive types translate as one would imagine:
 
 - `Function s t` (`s -> t`) --> `(_: s) => t`
 - `Array t` --> `Array<t>`
@@ -207,8 +207,6 @@ If the type is too complex, there may situations where the emitted declarations 
 
 Not supported.
 
-TODO: Investigate if we can reasonably emulate higher-kinded types in TypeScript.
-
 ## Type Classes
 
-Need more work.
+Not supported.
