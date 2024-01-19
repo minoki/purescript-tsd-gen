@@ -20,8 +20,9 @@ import           Paths_purescript_tsd_gen (version)
 import           Prelude hiding (elem, lookup, notElem)
 import           System.Directory (createDirectoryIfMissing, doesDirectoryExist,
                                    listDirectory)
+import           System.Exit (exitFailure)
 import           System.FilePath ((</>))
-import           System.IO (hPutStr, stderr)
+import           System.IO (hPutStrLn, stderr)
 
 processModules :: FilePath -> Maybe FilePath -> [String] -> Bool -> ExceptT ModuleProcessingError IO ()
 processModules inputDir mOutputDir modules importAll = do
@@ -104,7 +105,8 @@ main = do
             SameAsInput            -> Just pursOutputDirectory
       result <- runExceptT $ processModules pursOutputDirectory tsdOutputDirectory selectedModules importAll
       case result of
-        Left err -> hPutStr stderr (show err) -- TODO: Better error handling
+        Left err -> do hPutStrLn stderr (show err) -- TODO: Better error handling
+                       exitFailure
         Right _  -> return ()
     ShowVersion -> do
       putStrLn $ "purs-tsd-gen " <> showVersion version
