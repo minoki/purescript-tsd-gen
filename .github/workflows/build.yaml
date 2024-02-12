@@ -27,7 +27,8 @@ jobs:
           - purs: '0.15.13'
             registry: '47.10.0'
           - purs: '0.15.14'
-            registry: '48.4.0'
+            registry: '50.0.0'
+          - purs: '0.15.15'
     steps:
       - uses: actions/checkout@v3
 
